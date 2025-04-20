@@ -2,7 +2,6 @@ import itertools
 import logging
 from scipy.spatial import Delaunay
 import numpy as np
-import math
 from typing import Tuple, Set, List, Literal
 from matplotlib.axes import Axes
 from GraphClosure import GraphClosureTracker
