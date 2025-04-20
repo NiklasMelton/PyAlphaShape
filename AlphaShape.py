@@ -210,7 +210,6 @@ class AlphaShape:
     def __init__(self,
                  points: np.ndarray,
                  alpha: float = 0.,
-                 max_perimeter_length: float = np.inf,
                  connectivity: Literal["strict", "relaxed"] = "strict"
     ):
         self._dim = points.shape[1]
@@ -222,7 +221,6 @@ class AlphaShape:
             raise ValueError("connectivity must be 'strict' or 'relaxed'")
         self.connectivity = connectivity
 
-        self.max_perimeter_length = float(max_perimeter_length)
         self.points = np.asarray(points, dtype=float)
 
         self.simplices: Set[Tuple[int, ...]] = set()
@@ -268,8 +266,7 @@ class AlphaShape:
         Sub‑class overrides this for incremental behaviour.
         """
         pts = np.vstack([self.points, new_pts])
-        self.__init__(pts, alpha=self.alpha,
-                      max_perimeter_length=self.max_perimeter_length)
+        self.__init__(pts, alpha=self.alpha)
 
 
     # ---------- lazy accessor for boundary (d‑1)-faces ------------------ #
