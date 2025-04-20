@@ -69,27 +69,6 @@ def alphasimplices(points: np.ndarray) -> np.ndarray:
             logging.warn('Singular matrix. Likely caused by all points '
                          'lying in an N-1 space.')
 
-def volume_of_simplex(vertices: np.ndarray) -> float:
-    """
-    Calculates the n-dimensional volume of a simplex defined by its vertices.
-
-    Parameters
-    ----------
-    vertices : np.ndarray
-        An (n+1) x n array representing the coordinates of the simplex vertices.
-
-    Returns
-    -------
-    float
-        Volume of the simplex.
-
-    """
-    vertices = np.asarray(vertices)
-    # Subtract the first vertex from all vertices to form a matrix
-    matrix = vertices[1:] - vertices[0]
-    # Calculate the absolute value of the determinant divided by factorial(n) for volume
-    return np.abs(np.linalg.det(matrix)) / np.math.factorial(len(vertices) - 1)
-
 
 def get_perimeter_simplices(perimeter_edges: Set[Tuple], simplices: Set[Tuple], n: int):
 
@@ -111,48 +90,6 @@ def get_perimeter_simplices(perimeter_edges: Set[Tuple], simplices: Set[Tuple], 
                 perimeter_simplices.append(subsimplex)
 
     return perimeter_simplices
-
-
-def compute_surface_area(points: np.ndarray, perimeter_edges: Set[Tuple], simplices: Set[Tuple]):
-    """
-    Compute the surface area (or perimeter in 2D) of the polytope formed by the perimeter edges.
-
-    Args:
-      points (np.ndarray): The points of the polytope.
-      perimeter_edges (set): The set of perimeter edges.
-      simplices (set): the set of simplices
-
-    Returns:
-      float: The total surface "area" (or perimeter in 2D, hyper-volume in higher dimensions).
-    """
-    # Handle the 2D case (perimeter)
-    if points.shape[-1] == 2:
-        total_perimeter = 0.0
-        for edge in perimeter_edges:
-            p1, p2 = edge
-            total_perimeter += np.linalg.norm(points[p1] - points[p2])
-        return total_perimeter
-
-    # Handle the 3D and higher-dimensional cases
-    perimeter_simplices = get_perimeter_simplices(
-        perimeter_edges,
-        simplices,
-        points.shape[-1]
-    )
-    total_area = 0.
-    for perimeter_simplex in perimeter_simplices:
-        simplex_points = np.array([points[p,:] for p in perimeter_simplex])
-        total_area += volume_of_simplex(simplex_points)
-
-    return total_area
-
-
-def equalateral_simplex_volume(n: int, s: float):
-    numerator = s ** n
-    denominator = math.factorial(n)
-    sqrt_term = math.sqrt((n + 1) / (2 ** n))
-    volume = (numerator / denominator) * sqrt_term
-    return volume
 
 
 def plot_polygon_edges(
@@ -226,8 +163,6 @@ class AlphaShape:
         self.simplices: Set[Tuple[int, ...]] = set()
         self.perimeter_edges: List[Tuple[np.ndarray, np.ndarray]] = []
         self.perimeter_points: np.ndarray | None = None
-        self.centroid = np.zeros(self._dim)
-        self.volume = 0.0
         self.GCT = GraphClosureTracker(len(points))
 
         # build once
@@ -353,7 +288,6 @@ class AlphaShape:
         n = len(pts)
         if n < dim + 1:
             self.perimeter_points = pts
-            self.centroid = pts.mean(axis=0)
             return
 
         r_filter = np.inf if self.alpha <= 0 else 1.0 / self.alpha
@@ -389,15 +323,9 @@ class AlphaShape:
         self.simplices = set(kept)
         self.GCT = GraphClosureTracker(n)  # final tracker
         edges, perim_idx = set(), set()
-        self.volume = 0.0
-        self.centroid = np.zeros(dim)
 
         for s in self.simplices:
             self.GCT.add_fully_connected_subgraph(list(s))
-            vol = volume_of_simplex(pts[list(s)])
-            self.centroid = (self.centroid * self.volume +
-                             vol * pts[list(s)].mean(axis=0)) / (self.volume + vol)
-            self.volume += vol
 
             for f in itertools.combinations(s, dim):  # (d-1)-faces
                 f = tuple(sorted(f))
