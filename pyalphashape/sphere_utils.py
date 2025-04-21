@@ -1,8 +1,35 @@
 import numpy as np
 def normalize(v: np.ndarray) -> np.ndarray:
+    """
+    Normalize a vector to unit length.
+
+    Parameters
+    ----------
+    v : np.ndarray
+        Input vector.
+
+    Returns
+    -------
+    np.ndarray
+        Unit-length version of the input vector.
+    """
+
     return v / np.linalg.norm(v)
-def latlon_to_unit_vectors(latlon):
-    """Convert lat/lon in degrees to 3D Cartesian coordinates on unit sphere."""
+def latlon_to_unit_vectors(latlon: np.ndarray) -> np.ndarray:
+    """
+    Convert latitude and longitude (in degrees) to 3D unit vectors on the unit sphere.
+
+    Parameters
+    ----------
+    latlon : np.ndarray
+        An (N, 2) array of latitude and longitude in degrees.
+
+    Returns
+    -------
+    np.ndarray
+        An (N, 3) array of unit vectors in 3D Cartesian coordinates.
+    """
+
     lat = np.radians(latlon[:, 0])
     lon = np.radians(latlon[:, 1])
     x = np.cos(lat) * np.cos(lon)
@@ -10,10 +37,26 @@ def latlon_to_unit_vectors(latlon):
     z = np.sin(lat)
     return np.stack([x, y, z], axis=1)
 
-def spherical_incircle_check(triangle, test_point, epsilon=1e-6):
+def spherical_incircle_check(
+        triangle: np.ndarray,
+        test_point: np.ndarray
+) -> bool:
     """
-    Check if test_point lies inside the spherical circumcircle of the triangle.
+    Check if a test point lies inside the spherical circumcircle of a triangle on the unit sphere.
+
+    Parameters
+    ----------
+    triangle : np.ndarray
+        A (3, 3) array of 3D unit vectors representing triangle vertices.
+    test_point : np.ndarray
+        A 3D unit vector representing the point to test.
+
+    Returns
+    -------
+    bool
+        True if the test point lies within the circumcircle, False otherwise.
     """
+
     a, b, c = triangle
     a, b, c, d = [v / np.linalg.norm(v) for v in [a, b, c, test_point]]
 
@@ -32,14 +75,40 @@ def spherical_incircle_check(triangle, test_point, epsilon=1e-6):
 
     return dist < radius - epsilon
 
-def unit_vector(v):
+def unit_vector(v: np.ndarray) -> np.ndarray:
+    """
+    Normalize a vector to unit length (alias for `normalize`).
+
+    Parameters
+    ----------
+    v : np.ndarray
+        Input vector.
+
+    Returns
+    -------
+    np.ndarray
+        Unit-length vector.
+    """
+
     return v / np.linalg.norm(v)
 
-def gnomonic_projection(points_xyz, center_vec):
+def gnomonic_projection(points_xyz: np.ndarray, center_vec: np.ndarray) -> np.ndarray:
     """
-    Project points from unit sphere to 2D plane using gnomonic projection centered at center_vec.
-    All inputs must be unit vectors.
+    Project points on the unit sphere to a 2D tangent plane using gnomonic projection.
+
+    Parameters
+    ----------
+    points_xyz : np.ndarray
+        An (N, 3) array of unit vectors to project.
+    center_vec : np.ndarray
+        The projection center (3D unit vector).
+
+    Returns
+    -------
+    np.ndarray
+        An (N, 2) array of 2D coordinates in the tangent plane.
     """
+
     # Ensure center_vec is unit length
     center_vec = unit_vector(center_vec)
 
@@ -59,7 +128,25 @@ def gnomonic_projection(points_xyz, center_vec):
     y = proj @ y_axis
     return np.stack([x, y], axis=1)
 
-def spherical_triangle_area(a, b, c):
+def spherical_triangle_area(a: np.ndarray, b: np.ndarray, c: np.ndarray) -> float:
+    """
+    Compute the area of a spherical triangle on the unit sphere using the spherical excess formula.
+
+    Parameters
+    ----------
+    a : np.ndarray
+        First vertex (unit vector).
+    b : np.ndarray
+        Second vertex (unit vector).
+    c : np.ndarray
+        Third vertex (unit vector).
+
+    Returns
+    -------
+    float
+        Spherical area in steradians (radians^2).
+    """
+
     def angle(u, v):
         return np.arccos(np.clip(np.dot(u, v), -1.0, 1.0))
 
@@ -74,7 +161,25 @@ def spherical_triangle_area(a, b, c):
 
     return (alpha + beta + gamma) - np.pi
 
-def arc_distance(P, A, B):
+def arc_distance(P: np.ndarray, A: np.ndarray, B: np.ndarray) -> float:
+    """
+    Compute the shortest angular distance from point P to the arc segment between A and B on the sphere.
+
+    Parameters
+    ----------
+    P : np.ndarray
+        Query point (3D unit vector).
+    A : np.ndarray
+        Arc start point (3D unit vector).
+    B : np.ndarray
+        Arc end point (3D unit vector).
+
+    Returns
+    -------
+    float
+        Angular distance in radians from P to the closest point on arc AB.
+    """
+
     A = A / np.linalg.norm(A)
     B = B / np.linalg.norm(B)
     P = P / np.linalg.norm(P)
@@ -102,15 +207,26 @@ def arc_distance(P, A, B):
 
 def spherical_circumradius(points: np.ndarray, tol: float = 1e-10) -> float:
     """
-    Compute the spherical circumradius (in radians) of a triangle formed by 3 points on the unit sphere.
+    Compute the spherical circumradius of a triangle on the unit sphere.
 
-    Args:
-        points: (3, 3) array representing 3 points on the surface of a unit sphere.
-        tol: Tolerance to detect degeneracy.
+    Parameters
+    ----------
+    points : np.ndarray
+        A (3, 3) array of unit vectors defining a triangle.
+    tol : float, optional
+        Tolerance for degeneracy checks. Default is 1e-10.
 
-    Returns:
-        Angular radius in radians of the spherical circumcircle.
+    Returns
+    -------
+    float
+        Angular radius (in radians) of the triangle’s circumcircle.
+
+    Raises
+    ------
+    ValueError
+        If input does not have shape (3, 3).
     """
+
     if points.shape != (3, 3):
         raise ValueError("Input must be an array of shape (3, 3) representing 3 points in 3D.")
 

@@ -2,6 +2,7 @@ import numpy as np
 from numpy.linalg import norm
 from typing import List, Tuple, Optional
 from scipy.optimize import minimize
+from pyalphashape.sphere_utils import normalize
 
 def spherical_distance(u: np.ndarray, v: np.ndarray) -> float:
     """
@@ -23,22 +24,6 @@ def spherical_distance(u: np.ndarray, v: np.ndarray) -> float:
 
     return np.arccos(np.clip(np.dot(u, v), -1.0, 1.0))
 
-def normalize(v: np.ndarray) -> np.ndarray:
-    """
-    Normalize a vector to unit length.
-
-    Parameters
-    ----------
-    v : np.ndarray
-        A vector of arbitrary dimension.
-
-    Returns
-    -------
-    np.ndarray
-        The normalized (unit-length) version of the input vector.
-    """
-
-    return v / norm(v)
 
 def cap_through(points: List[np.ndarray]) -> Tuple[np.ndarray, float]:
     """
@@ -81,6 +66,7 @@ def cap_through(points: List[np.ndarray]) -> Tuple[np.ndarray, float]:
     else:
         raise ValueError("Only up to 3 points allowed for support set")
 
+
 def is_in_cap(
         p: np.ndarray,
         center: np.ndarray,
@@ -108,6 +94,7 @@ def is_in_cap(
     """
 
     return spherical_distance(p, center) <= radius + eps
+
 
 def welzl_spherical_cap(
         points: List[np.ndarray],
@@ -141,6 +128,7 @@ def welzl_spherical_cap(
         return center, radius
     else:
         return welzl_spherical_cap(rest, R + [p])
+
 
 def minimum_enclosing_spherical_cap(
         points_xyz: np.ndarray,
