@@ -1,7 +1,6 @@
 import numpy as np
 from numpy.linalg import norm
 from typing import List, Tuple, Optional
-import math
 from scipy.optimize import minimize
 
 def spherical_distance(u: np.ndarray, v: np.ndarray) -> float:
