@@ -1,7 +1,7 @@
 # AlphaShape
 
 <p align="center">
-  <img src="logo.png" alt="AlphaShape Logo" width="200"/>
+  <img src="logo.png" alt="AlphaShape Logo" width="400"/>
 </p>
 
 
