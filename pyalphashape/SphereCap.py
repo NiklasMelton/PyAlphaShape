@@ -4,14 +4,64 @@ from typing import List, Tuple, Optional
 from scipy.optimize import minimize
 
 def spherical_distance(u: np.ndarray, v: np.ndarray) -> float:
-    """Great-arc distance between unit vectors u and v."""
+    """
+    Compute the great-arc (angular) distance between two unit vectors on the unit
+    sphere.
+
+    Parameters
+    ----------
+    u : np.ndarray
+        A 3D unit vector.
+    v : np.ndarray
+        A 3D unit vector.
+
+    Returns
+    -------
+    float
+        The angular distance in radians between u and v.
+    """
+
     return np.arccos(np.clip(np.dot(u, v), -1.0, 1.0))
 
 def normalize(v: np.ndarray) -> np.ndarray:
+    """
+    Normalize a vector to unit length.
+
+    Parameters
+    ----------
+    v : np.ndarray
+        A vector of arbitrary dimension.
+
+    Returns
+    -------
+    np.ndarray
+        The normalized (unit-length) version of the input vector.
+    """
+
     return v / norm(v)
 
 def cap_through(points: List[np.ndarray]) -> Tuple[np.ndarray, float]:
-    """Return the center and angular radius of the smallest spherical cap through 0–3 points."""
+    """
+    Compute the smallest spherical cap that passes through 0 to 3 given points.
+
+    Parameters
+    ----------
+    points : List[np.ndarray]
+        A list of 0 to 3 unit vectors on the sphere.
+
+    Returns
+    -------
+    Tuple[np.ndarray, float]
+        A tuple containing:
+        - center (np.ndarray): unit vector pointing to the center of the cap.
+        - radius (float): angular radius of the cap in radians.
+
+    Raises
+    ------
+    ValueError
+        If more than 3 points are given.
+    """
+
     if len(points) == 0:
         return np.array([1.0, 0.0, 0.0]), 0.0
     elif len(points) == 1:
@@ -31,10 +81,55 @@ def cap_through(points: List[np.ndarray]) -> Tuple[np.ndarray, float]:
     else:
         raise ValueError("Only up to 3 points allowed for support set")
 
-def is_in_cap(p: np.ndarray, center: np.ndarray, radius: float, eps: float = 1e-10) -> bool:
+def is_in_cap(
+        p: np.ndarray,
+        center: np.ndarray,
+        radius: float,
+        eps: float = 1e-10
+) -> bool:
+    """
+    Check if a point lies within (or on) a spherical cap.
+
+    Parameters
+    ----------
+    p : np.ndarray
+        The point to check (unit vector).
+    center : np.ndarray
+        The cap center (unit vector).
+    radius : float
+        The angular radius of the cap (in radians).
+    eps : float, optional
+        Tolerance to account for numerical precision. Default is 1e-10.
+
+    Returns
+    -------
+    bool
+        True if the point lies within the cap, False otherwise.
+    """
+
     return spherical_distance(p, center) <= radius + eps
 
-def welzl_spherical_cap(points: List[np.ndarray], R: List[np.ndarray] = []) -> Tuple[np.ndarray, float]:
+def welzl_spherical_cap(
+        points: List[np.ndarray],
+        R: List[np.ndarray] = []
+) -> Tuple[np.ndarray, float]:
+    """
+    Recursive implementation of Welzl’s algorithm for smallest enclosing spherical cap.
+
+    Parameters
+    ----------
+    points : List[np.ndarray]
+        A list of unit vectors to enclose.
+    R : List[np.ndarray], optional
+        A list of up to 3 support points defining the current cap (default empty).
+
+    Returns
+    -------
+    Tuple[np.ndarray, float]
+        - center (np.ndarray): unit vector pointing to cap center.
+        - radius (float): angular radius in radians.
+    """
+
     if len(points) == 0 or len(R) == 3:
         return cap_through(R)
 
@@ -47,8 +142,27 @@ def welzl_spherical_cap(points: List[np.ndarray], R: List[np.ndarray] = []) -> T
     else:
         return welzl_spherical_cap(rest, R + [p])
 
-def minimum_enclosing_spherical_cap(points_xyz: np.ndarray, seed: Optional[int] = None) -> Tuple[np.ndarray, float]:
-    """Compute the smallest enclosing spherical cap for points on the unit sphere."""
+def minimum_enclosing_spherical_cap(
+        points_xyz: np.ndarray,
+        seed: Optional[int] = None
+) -> Tuple[np.ndarray, float]:
+    """
+    Compute the smallest enclosing spherical cap for a set of 3D unit vectors.
+
+    Parameters
+    ----------
+    points_xyz : np.ndarray
+        An (N, 3) array of unit vectors on the sphere.
+    seed : Optional[int], optional
+        Random seed for reproducibility of the point shuffle. Default is None.
+
+    Returns
+    -------
+    Tuple[np.ndarray, float]
+        - center (np.ndarray): unit vector pointing to cap center.
+        - radius (float): angular radius in radians.
+    """
+
     if seed is not None:
         np.random.seed(seed)
     points = points_xyz.copy()
@@ -56,18 +170,31 @@ def minimum_enclosing_spherical_cap(points_xyz: np.ndarray, seed: Optional[int] 
     return welzl_spherical_cap(list(points))
 
 
-def maximum_empty_spherical_cap(points_xyz: np.ndarray, n_restarts: int = 10) -> Tuple[
-    np.ndarray, float]:
+def maximum_empty_spherical_cap(
+        points_xyz: np.ndarray,
+        n_restarts: int = 10
+) -> Tuple[np.ndarray, float]:
     """
-    Finds the direction on the unit sphere that maximizes the minimum angular distance
-    to all input points — i.e., the center of the largest spherical cap that excludes all points.
+    Find the largest spherical cap that does not contain any input point.
 
-    Uses the center of the minimum enclosing spherical cap over the antipodes as a prime initialization.
+    This is done by maximizing the minimum angular distance to all input points
+    on the unit sphere. The result is the center and radius of the largest
+    empty spherical cap.
 
-    Returns:
-        center: np.ndarray (3,) — unit vector pointing to cap center
-        radius: float — angular radius (in radians) of the largest empty cap
+    Parameters
+    ----------
+    points_xyz : np.ndarray
+        An (N, 3) array of unit vectors on the sphere.
+    n_restarts : int, optional
+        Number of random restarts for optimization. Default is 10.
+
+    Returns
+    -------
+    Tuple[np.ndarray, float]
+        - center (np.ndarray): unit vector pointing to cap center.
+        - radius (float): angular radius in radians of the largest empty cap.
     """
+
     def cost(center_flat):
         center = normalize(center_flat)
         return -np.min(np.dot(points_xyz, center))  # maximize minimum dot product (cos(theta))
