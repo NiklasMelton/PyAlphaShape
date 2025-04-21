@@ -11,10 +11,6 @@ class SphericalAlphaShape:
     Batch α‑shape (concave hull) in arbitrary dimension.
     """
 
-    # --------------------------------------------------------------------- #
-    #  construction (unchanged from your paste, but wrapped in a method so  #
-    #  subclasses can re‑use it)                                            #
-    # --------------------------------------------------------------------- #
     def __init__(self,
                  points: np.ndarray,
                  alpha: float = 0.,
@@ -40,9 +36,6 @@ class SphericalAlphaShape:
         # build once
         self._build_batch()
 
-    # ------------------------------------------------------------------ #
-    #  public helpers (unchanged)                                        #
-    # ------------------------------------------------------------------ #
 
     @property
     def vertices(self):
@@ -163,9 +156,6 @@ class SphericalAlphaShape:
 
         return float(min(dists))
 
-    # ------------------------------------------------------------------ #
-    #  internal: one‑shot batch builder (exact logic you pasted,         #
-    #  only lightly reorganised so subclasses can call it)               #
     # ------------------------------------------------------------------ #
     def _build_batch(self):
         dim, pts, pts_latlon = self._dim, self.points, self.points_latlon

@@ -72,10 +72,6 @@ class AlphaShape:
     Batch α‑shape (concave hull) in arbitrary dimension.
     """
 
-    # --------------------------------------------------------------------- #
-    #  construction (unchanged from your paste, but wrapped in a method so  #
-    #  subclasses can re‑use it)                                            #
-    # --------------------------------------------------------------------- #
     def __init__(self,
                  points: np.ndarray,
                  alpha: float = 0.,
@@ -100,9 +96,6 @@ class AlphaShape:
         # build once
         self._build_batch()
 
-    # ------------------------------------------------------------------ #
-    #  public helpers (unchanged)                                        #
-    # ------------------------------------------------------------------ #
 
     @property
     def vertices(self):
@@ -126,7 +119,6 @@ class AlphaShape:
     def add_points(self, new_pts: np.ndarray):
         """
         *Batch* version – simply rebuilds everything.
-        Sub‑class overrides this for incremental behaviour.
         """
         pts = np.vstack([self.points, new_pts])
         self.__init__(pts, alpha=self.alpha)
@@ -138,9 +130,6 @@ class AlphaShape:
         Return the set of boundary faces (index tuples of length d) and cache
         it in `self._boundary_faces` so the computation is done only once.
 
-        For `iAlphaShape` this simply forwards the attribute it already keeps.
-        For the batch version we reconstruct the set from `self.simplices`
-        using the usual “flip once ↔ boundary” rule.
         """
         if hasattr(self, "_boundary_faces"):
             return self._boundary_faces
@@ -207,10 +196,6 @@ class AlphaShape:
         return float(min(dists))
 
 
-    # ------------------------------------------------------------------ #
-    #  internal: one‑shot batch builder (exact logic you pasted,         #
-    #  only lightly reorganised so subclasses can call it)               #
-    # ------------------------------------------------------------------ #
     def _build_batch(self):
         dim, pts = self._dim, self.points
         n = len(pts)
