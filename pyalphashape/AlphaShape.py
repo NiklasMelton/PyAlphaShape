@@ -2,22 +2,26 @@ import itertools
 import logging
 from scipy.spatial import Delaunay
 import numpy as np
-from typing import Tuple, Set, List, Literal
+from typing import Tuple, Set, List, Literal, Optional
 from GraphClosure import GraphClosureTracker
 
 
 def circumcenter(points: np.ndarray) -> np.ndarray:
     """
-    Calculate the circumcenter of a set of points in barycentric coordinates.
+    Compute the circumcenter of a simplex in arbitrary dimensions.
 
-    Args:
-      points: An `N`x`K` array of points which define an (`N`-1) simplex in K
-        dimensional space.  `N` and `K` must satisfy 1 <= `N` <= `K` and
-        `K` >= 1.
+    Parameters
+    ----------
+    points : np.ndarray
+        An (N, K) array of coordinates defining an (N-1)-simplex in K-dimensional space.
+        Must satisfy 1 <= N <= K and K >= 1.
 
-    Returns:
-      The circumcenter of a set of points in barycentric coordinates.
+    Returns
+    -------
+    np.ndarray
+        The barycentric coordinates of the circumcenter of the simplex.
     """
+
     num_rows, num_columns = points.shape
     A = np.bmat([[2 * np.dot(points, points.T),
                   np.ones((num_rows, 1))],
@@ -30,31 +34,41 @@ def circumcenter(points: np.ndarray) -> np.ndarray:
 
 def circumradius(points: np.ndarray) -> float:
     """
-    Calculte the circumradius of a given set of points.
+    Compute the circumradius of a simplex in arbitrary dimensions.
 
-    Args:
-      points: An `N`x`K` array of points which define an (`N`-1) simplex in K
-        dimensional space.  `N` and `K` must satisfy 1 <= `N` <= `K` and
-        `K` >= 1.
+    Parameters
+    ----------
+    points : np.ndarray
+        An (N, K) array of coordinates defining an (N-1)-simplex in K-dimensional space.
 
-    Returns:
-      The circumradius of a given set of points.
+    Returns
+    -------
+    float
+        The circumradius of the simplex.
     """
+
     return np.linalg.norm(points[0, :] - np.dot(circumcenter(points), points))
 
 
 
-def alphasimplices(points: np.ndarray) -> np.ndarray:
+def alphasimplices(points: np.ndarray) -> Tuple[np.ndarray, float, np.ndarray]:
     """
-    Returns an iterator of simplices and their circumradii of the given set of
-    points.
+    Generate all simplices in the Delaunay triangulation along with their circumradii.
 
-    Args:
-      points: An `N`x`M` array of points.
+    Parameters
+    ----------
+    points : np.ndarray
+        An (N, K) array of points to triangulate.
 
-    Yields:
-      A simplex, and its circumradius as a tuple.
+    Yields
+    ------
+    Tuple[np.ndarray, float, np.ndarray]
+        A tuple containing:
+        - The simplex as an array of indices,
+        - Its circumradius,
+        - The coordinates of the simplex vertices.
     """
+
     coords = np.asarray(points)
     tri = Delaunay(coords, qhull_options="Qz")
 
@@ -69,7 +83,16 @@ def alphasimplices(points: np.ndarray) -> np.ndarray:
 
 class AlphaShape:
     """
-    Batch α‑shape (concave hull) in arbitrary dimension.
+    Compute the α-shape (concave hull) of a point cloud in arbitrary dimensions.
+
+    Parameters
+    ----------
+    points : np.ndarray
+        An (N, d) array of points.
+    alpha : float, optional
+        The α parameter controlling the "tightness" of the shape. Default is 0.
+    connectivity : {"strict", "relaxed"}, optional
+        Connectivity rule for filtering simplices. Default is "strict".
     """
 
     def __init__(self,
@@ -96,13 +119,34 @@ class AlphaShape:
         # build once
         self._build_batch()
 
-
     @property
-    def vertices(self):
+    def vertices(self) -> Optional[np.ndarray]:
+        """
+        Get the perimeter vertices of the alpha shape.
+
+        Returns
+        -------
+        np.ndarray or None
+            Array of perimeter points, or None if not computed.
+        """
+
         return self.perimeter_points
 
-
     def contains_point(self, pt: np.ndarray) -> bool:
+        """
+        Check whether a given point lies inside the alpha shape.
+
+        Parameters
+        ----------
+        pt : np.ndarray
+            A point of shape (d,) to test for inclusion.
+
+        Returns
+        -------
+        bool
+            True if the point lies inside or on the alpha shape; False otherwise.
+        """
+
         if len(self.simplices) == 0:
             return False
         for s in self.simplices:
@@ -116,21 +160,29 @@ class AlphaShape:
                 continue
         return False
 
-    def add_points(self, new_pts: np.ndarray):
+    def add_points(self, new_pts: np.ndarray) -> None:
         """
-        *Batch* version – simply rebuilds everything.
+        Add new points to the alpha shape (batch rebuild).
+
+        Parameters
+        ----------
+        new_pts : np.ndarray
+            A (N, d) array of new points to add. The alpha shape is rebuilt.
         """
+
         pts = np.vstack([self.points, new_pts])
         self.__init__(pts, alpha=self.alpha)
 
-
-    # ---------- lazy accessor for boundary (d‑1)-faces ------------------ #
     def _get_boundary_faces(self) -> Set[Tuple[int, ...]]:
         """
-        Return the set of boundary faces (index tuples of length d) and cache
-        it in `self._boundary_faces` so the computation is done only once.
+        Identify and return the boundary (d-1)-faces of the alpha shape.
 
+        Returns
+        -------
+        Set[Tuple[int, ...]]
+            A set of index tuples representing the boundary faces.
         """
+
         if hasattr(self, "_boundary_faces"):
             return self._boundary_faces
 
@@ -147,16 +199,24 @@ class AlphaShape:
         self._boundary_faces = faces
         return faces
 
-
-    def distance_to_surface(self,
-                            point: np.ndarray,
-                            tol: float = 1e-9) -> float:
+    def distance_to_surface(self, point: np.ndarray, tol: float = 1e-9) -> float:
         """
-        Euclidean distance from `point` to the α‑shape surface.
-        Returns 0 if the point lies inside or on the surface.
+        Compute the shortest Euclidean distance from a point to the alpha shape surface.
 
-        Works for any ambient dimension d ≥ 2.
+        Parameters
+        ----------
+        point : np.ndarray
+            A point of shape (d,) in the same ambient space as the alpha shape.
+        tol : float, optional
+            Tolerance for barycentric coordinate test. Default is 1e-9.
+
+        Returns
+        -------
+        float
+            Distance from the point to the alpha shape surface. Returns 0 if inside
+            or on surface.
         """
+
         p = np.asarray(point, dtype=float)
         if p.shape[-1] != self._dim:
             raise ValueError("point dimensionality mismatch")
@@ -195,8 +255,13 @@ class AlphaShape:
 
         return float(min(dists))
 
+    def _build_batch(self) -> None:
+        """
+        Construct the alpha shape using Delaunay triangulation and filtering by alpha.
 
-    def _build_batch(self):
+        This method is automatically called upon initialization.
+        """
+
         dim, pts = self._dim, self.points
         n = len(pts)
         if n < dim + 1:
@@ -254,9 +319,27 @@ class AlphaShape:
                                 for i, j in itertools.combinations(f, 2)]
 
     @property
-    def is_empty(self):
+    def is_empty(self) -> bool:
+        """
+        Check whether the alpha shape is empty (i.e., no perimeter points).
+
+        Returns
+        -------
+        bool
+            True if empty; False otherwise.
+        """
+
         return len(self.perimeter_points) == 0
 
     @property
     def triangle_faces(self) -> List[np.ndarray]:
+        """
+        Get the triangle faces (simplices) that make up the alpha shape.
+
+        Returns
+        -------
+        List[np.ndarray]
+            List of arrays containing vertex coordinates of each simplex.
+        """
+
         return [self.points[list(s)] for s in self.simplices]
