@@ -5,7 +5,7 @@
 </p>
 
 
-**pyAlphaShape** is a Python library for constructing alpha shapes in both  
+**PyAlphaShape** is a Python library for constructing alpha shapes in both  
 **Euclidean** and **spherical** geometries. It supports flexible alpha filtering,  
 connectivity pruning, and robust geometric computation via `scipy.spatial`.
 
@@ -36,13 +36,13 @@ points = np.random.rand(100, 2)
 alpha_shape = AlphaShape(points, alpha=0.1)
 
 # Get edges or simplices of the shape
-edges = alpha_shape.get_edges()
-triangles = alpha_shape.get_simplices()  # for 2D
+edges = alpha_shape.perimeter_edges()
+triangles = alpha_shape.triangle_faces() 
 ```
 
 ### Spherical Alpha Shape
 ```python
-from alphashape import SphericalAlphaShape
+from pyalphashape import SphericalAlphaShape
 import numpy as np
 
 # Define latitude and longitude in degrees
@@ -55,8 +55,9 @@ latlon_points = np.array([
 ])
 
 # Create alpha shape directly from lat/lon
-spherical_shape = SphericalAlphaShape.from_latlon(latlon_points, alpha=0.5)
+spherical_shape = SphericalAlphaShape(latlon_points, alpha=0.5)
 
-# Extract surface triangles
-triangles = spherical_shape.get_triangles()
+# Extract perimeter points and edges
+perimeter_points = spherical_shape.perimeter_points
+perimeter_edges = spherical_shape.perimeter_edges
 ```
