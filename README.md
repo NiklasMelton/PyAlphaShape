@@ -1,6 +1,8 @@
 # AlphaShape
 
-![AlphaShape Logo](logo.png)
+<p align="center">
+  <img src="logo.png" alt="AlphaShape Logo" width="160"/>
+</p>
 
 
 **AlphaShape** is a Python library for constructing alpha shapes in both  
@@ -16,7 +18,7 @@ Alpha shapes are filtered subsets of the complete Delaunay triangulation, where 
 ## Installation
 
 ```bash
-pip install alphashape
+pip install pyalphashape
 ```
 
 ## Example Usage
