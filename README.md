@@ -5,7 +5,7 @@
 </p>
 
 
-**AlphaShape** is a Python library for constructing alpha shapes in both  
+**pyAlphaShape** is a Python library for constructing alpha shapes in both  
 **Euclidean** and **spherical** geometries. It supports flexible alpha filtering,  
 connectivity pruning, and robust geometric computation via `scipy.spatial`.
 
