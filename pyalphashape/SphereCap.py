@@ -56,7 +56,8 @@ def minimum_enclosing_spherical_cap(points_xyz: np.ndarray, seed: Optional[int] 
     return welzl_spherical_cap(list(points))
 
 
-def find_max_empty_spherical_cap(points_xyz: np.ndarray, n_restarts: int = 10) -> Tuple[np.ndarray, float]:
+def maximum_empty_spherical_cap(points_xyz: np.ndarray, n_restarts: int = 10) -> Tuple[
+    np.ndarray, float]:
     """
     Finds the direction on the unit sphere that maximizes the minimum angular distance
     to all input points — i.e., the center of the largest spherical cap that excludes all points.
