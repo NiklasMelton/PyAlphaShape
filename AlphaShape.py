@@ -3,9 +3,7 @@ import logging
 from scipy.spatial import Delaunay
 import numpy as np
 from typing import Tuple, Set, List, Literal
-from matplotlib.axes import Axes
 from GraphClosure import GraphClosureTracker
-
 
 
 def circumcenter(points: np.ndarray) -> np.ndarray:
@@ -69,71 +67,6 @@ def alphasimplices(points: np.ndarray) -> np.ndarray:
                          'lying in an N-1 space.')
 
 
-def get_perimeter_simplices(perimeter_edges: Set[Tuple], simplices: Set[Tuple], n: int):
-
-    perimeter_edges_set = set(tuple(sorted(edge)) for edge in perimeter_edges)
-
-    # This will store the (n-1)-simplices composed of perimeter edges
-    perimeter_simplices = []
-
-    for simplex in simplices:
-        # Generate all (n-1)-dimensional subsimplices (faces)
-        for subsimplex in itertools.combinations(simplex, n - 1):
-            # Check if all edges of this subsimplex are in the perimeter
-            subsimplex_edges = itertools.combinations(
-                subsimplex,
-                2
-            )  # get pairs of vertices
-            if all(tuple(sorted(edge)) in perimeter_edges_set for edge in
-                   subsimplex_edges):
-                perimeter_simplices.append(subsimplex)
-
-    return perimeter_simplices
-
-
-def plot_polygon_edges(
-    edges: np.ndarray,
-    ax: Axes,
-    line_color: str = "b",
-    line_width: float = 1.0,
-):
-    """
-    Plots a convex polygon given its vertices using Matplotlib.
-
-    Parameters
-    ----------
-    vertices : np.ndarray
-        A list of edges representing a polygon.
-    ax : matplotlib.axes.Axes
-        A matplotlib Axes object to plot on.
-    line_color : str, optional
-        The color of the polygon lines, by default 'b'.
-    line_width : float, optional
-        The width of the polygon lines, by default 1.0.
-
-    """
-    for p1, p2 in edges:
-        x = [p1[0], p2[0]]
-        y = [p1[1], p2[1]]
-        if len(p1) > 2:
-            z = [p1[2], p2[2]]
-            ax.plot(
-                x,
-                y,
-                z,
-                linestyle="-",
-                color=line_color,
-                linewidth=line_width,
-            )
-        else:
-            ax.plot(
-                x,
-                y,
-                linestyle="-",
-                color=line_color,
-                linewidth=line_width,
-            )
-
 class AlphaShape:
     """
     Batch α‑shape (concave hull) in arbitrary dimension.
@@ -174,11 +107,7 @@ class AlphaShape:
     @property
     def vertices(self):
         return self.perimeter_points
-    @property
-    def max_edge_length(self) -> float:
-        if not self.perimeter_edges:
-            return 0.0
-        return max(np.linalg.norm(a - b) for a, b in self.perimeter_edges)
+
 
     def contains_point(self, pt: np.ndarray) -> bool:
         if len(self.simplices) == 0:
@@ -342,3 +271,7 @@ class AlphaShape:
     @property
     def is_empty(self):
         return len(self.perimeter_points) == 0
+
+    @property
+    def triangle_faces(self) -> List[np.ndarray]:
+        return [self.points[list(s)] for s in self.simplices]

@@ -1,75 +1,9 @@
 import numpy as np
 import itertools
 from typing import Literal, Set, Tuple, List
-from SphericalDelaunay import SphericalDelaunay, latlon_to_unit_vectors
+from SphericalDelaunay import SphericalDelaunay
+from sphere_utils import latlon_to_unit_vectors, arc_distance, spherical_circumradius
 from GraphClosure import GraphClosureTracker
-
-
-def arc_distance(P, A, B):
-    A = A / np.linalg.norm(A)
-    B = B / np.linalg.norm(B)
-    P = P / np.linalg.norm(P)
-
-    n = np.cross(A, B)
-    n_norm = np.linalg.norm(n)
-    if n_norm < 1e-10:
-        return min(np.arccos(np.clip(np.dot(P, A), -1.0, 1.0)),
-                   np.arccos(np.clip(np.dot(P, B), -1.0, 1.0)))
-    n /= n_norm
-
-    perp = np.cross(n, np.cross(P, n))
-    projected = perp / np.linalg.norm(perp)
-
-    angle_total = np.arccos(np.clip(np.dot(A, B), -1.0, 1.0))
-    angle_ap = np.arccos(np.clip(np.dot(A, projected), -1.0, 1.0))
-    angle_bp = np.arccos(np.clip(np.dot(B, projected), -1.0, 1.0))
-
-    if np.abs((angle_ap + angle_bp) - angle_total) < 1e-8:
-        return np.arccos(np.clip(np.dot(P, projected), -1.0, 1.0))
-    else:
-        return min(np.arccos(np.clip(np.dot(P, A), -1.0, 1.0)),
-                   np.arccos(np.clip(np.dot(P, B), -1.0, 1.0)))
-
-
-def spherical_circumradius(points: np.ndarray, tol: float = 1e-10) -> float:
-    """
-    Compute the spherical circumradius (in radians) of a triangle formed by 3 points on the unit sphere.
-
-    Args:
-        points: (3, 3) array representing 3 points on the surface of a unit sphere.
-        tol: Tolerance to detect degeneracy.
-
-    Returns:
-        Angular radius in radians of the spherical circumcircle.
-    """
-    if points.shape != (3, 3):
-        raise ValueError("Input must be an array of shape (3, 3) representing 3 points in 3D.")
-
-    A, B, C = points
-
-    # Ensure all points are unit vectors
-    assert np.allclose(np.linalg.norm(A), 1.0, atol=tol)
-    assert np.allclose(np.linalg.norm(B), 1.0, atol=tol)
-    assert np.allclose(np.linalg.norm(C), 1.0, atol=tol)
-
-    # Compute normals to edges (great circles)
-    n1 = np.cross(A, B)
-    n2 = np.cross(B, C)
-
-    # Normal to the plane containing the triangle's circumcenter
-    center = np.cross(n1, n2)
-    norm_center = np.linalg.norm(center)
-
-    if norm_center < tol:
-        # Degenerate triangle (e.g., colinear points)
-        return np.pi  # maximal uncertainty — half a great circle
-
-    center /= norm_center  # normalize to lie on the unit sphere
-
-    # Angular radius is arc distance from center to any vertex (say A)
-    radius = np.arccos(np.clip(np.dot(center, A), -1.0, 1.0))
-
-    return radius
 
 
 class SphericalAlphaShape:

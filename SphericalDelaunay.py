@@ -2,81 +2,13 @@
 import numpy as np
 from scipy.spatial import ConvexHull, Delaunay
 from typing import Optional
+from sphere_utils import (
+    latlon_to_unit_vectors,
+    unit_vector, gnomonic_projection,
+    spherical_triangle_area
+)
 
-def normalize(v: np.ndarray) -> np.ndarray:
-    return v / np.linalg.norm(v)
-def latlon_to_unit_vectors(latlon):
-    """Convert lat/lon in degrees to 3D Cartesian coordinates on unit sphere."""
-    lat = np.radians(latlon[:, 0])
-    lon = np.radians(latlon[:, 1])
-    x = np.cos(lat) * np.cos(lon)
-    y = np.cos(lat) * np.sin(lon)
-    z = np.sin(lat)
-    return np.stack([x, y, z], axis=1)
 
-def spherical_incircle_check(triangle, test_point, epsilon=1e-6):
-    """
-    Check if test_point lies inside the spherical circumcircle of the triangle.
-    """
-    a, b, c = triangle
-    a, b, c, d = [v / np.linalg.norm(v) for v in [a, b, c, test_point]]
-
-    # Compute circumcenter as normalized sum of edge plane normals
-    ab = np.cross(a, b)
-    bc = np.cross(b, c)
-    ca = np.cross(c, a)
-    n = ab + bc + ca
-    if np.linalg.norm(n) < 1e-10:
-        return False  # Degenerate triangle
-    center = n / np.linalg.norm(n)
-
-    # Angular radius to triangle vertices
-    radius = np.arccos(np.clip(np.dot(center, a), -1, 1))
-    dist = np.arccos(np.clip(np.dot(center, d), -1, 1))
-
-    return dist < radius - epsilon
-
-def unit_vector(v):
-    return v / np.linalg.norm(v)
-
-def gnomonic_projection(points_xyz, center_vec):
-    """
-    Project points from unit sphere to 2D plane using gnomonic projection centered at center_vec.
-    All inputs must be unit vectors.
-    """
-    # Ensure center_vec is unit length
-    center_vec = unit_vector(center_vec)
-
-    # Create a local tangent plane basis at center_vec
-    # z-axis is center_vec
-    # x-axis is arbitrary perpendicular (e.g., rotate north pole to center_vec)
-    north_pole = np.array([0.0, 0.0, 1.0])
-    x_axis = unit_vector(np.cross(north_pole, center_vec))
-    if np.linalg.norm(x_axis) < 1e-6:  # handle pole case
-        x_axis = np.array([1.0, 0.0, 0.0])
-    y_axis = np.cross(center_vec, x_axis)
-
-    # Project onto tangent plane
-    dots = points_xyz @ center_vec
-    proj = points_xyz / dots[:, np.newaxis]  # gnomonic projection
-    x = proj @ x_axis
-    y = proj @ y_axis
-    return np.stack([x, y], axis=1)
-
-def spherical_triangle_area(a, b, c):
-    def angle(u, v):
-        return np.arccos(np.clip(np.dot(u, v), -1.0, 1.0))
-
-    def tri_angle(a, b, c):
-        ab = np.cross(a, b)
-        ac = np.cross(a, c)
-        return np.arccos(np.clip(np.dot(normalize(ab), normalize(ac)), -1.0, 1.0))
-
-    alpha = tri_angle(a, b, c)
-    beta = tri_angle(b, c, a)
-    gamma = tri_angle(c, a, b)
-
-    return (alpha + beta + gamma) - np.pi
 
 class SphericalDelaunay:
     def __init__(
