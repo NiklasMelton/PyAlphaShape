@@ -1,6 +1,6 @@
 import numpy as np
 import itertools
-from typing import Literal, Set, Tuple, List
+from typing import Literal, Set, Tuple, List, Optional
 from SphericalDelaunay import SphericalDelaunay
 from sphere_utils import latlon_to_unit_vectors, arc_distance, spherical_circumradius
 from GraphClosure import GraphClosureTracker
@@ -8,7 +8,16 @@ from GraphClosure import GraphClosureTracker
 
 class SphericalAlphaShape:
     """
-    Batch α‑shape (concave hull) in arbitrary dimension.
+    Compute the α-shape (concave hull) of points defined on the surface of a unit sphere.
+
+    Parameters
+    ----------
+    points : np.ndarray
+        An (N, 2) array of latitude and longitude coordinates in degrees.
+    alpha : float, optional
+        The α parameter controlling shape detail. Smaller values yield tighter shapes.
+    connectivity : {"strict", "relaxed"}, optional
+        Rule for keeping connected components during filtering.
     """
 
     def __init__(self,
@@ -36,22 +45,34 @@ class SphericalAlphaShape:
         # build once
         self._build_batch()
 
-
     @property
-    def vertices(self):
+    def vertices(self) -> Optional[np.ndarray]:
+        """
+        Return the perimeter vertices of the spherical alpha shape (in 3D unit vector form).
+
+        Returns
+        -------
+        np.ndarray or None
+            The perimeter points of the alpha shape, or None if uninitialized.
+        """
+
         return self.perimeter_points
 
-    def contains_point(self, pt_latlon: np.ndarray, tol: float = 1e-10) -> bool:
+    def contains_point(self, pt_latlon: np.ndarray) -> bool:
         """
-        Check whether a (lat, lon) point lies inside any spherical triangle in the alpha shape.
+        Check whether a (lat, lon) point lies within the spherical alpha shape.
 
-        Args:
-            pt_latlon: (2,) array with [latitude, longitude] in degrees.
-            tol: Numerical tolerance.
+        Parameters
+        ----------
+        pt_latlon : np.ndarray
+            A (2,) array representing a point in [latitude, longitude] degrees.
 
-        Returns:
-            True if the point lies inside any triangle, False otherwise.
+        Returns
+        -------
+        bool
+            True if the point lies inside or on the alpha shape, False otherwise.
         """
+
         if len(self.simplices) == 0:
             return False
 
@@ -76,25 +97,29 @@ class SphericalAlphaShape:
 
         return False
 
-    def add_points(self, new_pts: np.ndarray):
+    def add_points(self, new_pts: np.ndarray) -> None:
         """
-        *Batch* version – simply rebuilds everything.
-        Sub‑class overrides this for incremental behaviour.
+        Add new latitude-longitude points and rebuild the spherical alpha shape.
+
+        Parameters
+        ----------
+        new_pts : np.ndarray
+            An (M, 2) array of new points in degrees [lat, lon].
         """
+
         pts = np.vstack([self.points_latlon, new_pts])
         self.__init__(pts, alpha=self.alpha)
 
-
-    # ---------- lazy accessor for boundary (d‑1)-faces ------------------ #
     def _get_boundary_faces(self) -> Set[Tuple[int, ...]]:
         """
-        Return the set of boundary faces (index tuples of length d) and cache
-        it in `self._boundary_faces` so the computation is done only once.
+        Return the set of (d-1)-faces that form the boundary of the alpha shape.
 
-        For `iAlphaShape` this simply forwards the attribute it already keeps.
-        For the batch version we reconstruct the set from `self.simplices`
-        using the usual “flip once ↔ boundary” rule.
+        Returns
+        -------
+        Set[Tuple[int, ...]]
+            Set of index tuples representing the boundary faces.
         """
+
         if hasattr(self, "_boundary_faces"):
             return self._boundary_faces
 
@@ -111,17 +136,22 @@ class SphericalAlphaShape:
         self._boundary_faces = faces
         return faces
 
-    def distance_to_surface(self,
-                            point: np.ndarray,
-                            tol: float = 1e-9) -> float:
+    def distance_to_surface(self, point: np.ndarray) -> float:
         """
-        Angular arc distance (radians) from `point` (given in [lat, lon] degrees)
-        to the α‑shape surface on a unit sphere.
+        Compute the angular arc distance from a (lat, lon) point to the alpha shape surface.
 
-        Returns 0 if the point lies inside or on the surface.
+        Parameters
+        ----------
+        point : np.ndarray
+            A (2,) array representing a point in [latitude, longitude] degrees.
 
-        Only works for the 2D surface of a 3D sphere (dim=3).
+        Returns
+        -------
+        float
+            The arc distance in radians from the point to the alpha shape surface.
+            Returns 0 if the point lies inside or on the surface.
         """
+
         if point.shape[-1] != 2:
             raise ValueError("Input point must be (lat, lon) in degrees")
         if self._dim != 3:
@@ -156,8 +186,13 @@ class SphericalAlphaShape:
 
         return float(min(dists))
 
-    # ------------------------------------------------------------------ #
-    def _build_batch(self):
+    def _build_batch(self) -> None:
+        """
+        Construct the spherical alpha shape by computing Delaunay triangles
+        and filtering them by circumradius and connectivity.
+        This method is automatically called on initialization.
+        """
+
         dim, pts, pts_latlon = self._dim, self.points, self.points_latlon
         n = len(pts)
         if n < dim + 1:
@@ -245,14 +280,41 @@ class SphericalAlphaShape:
                                 for i, j in itertools.combinations(f, 2)]
 
     @property
-    def is_empty(self):
+    def is_empty(self) -> bool:
+        """
+        Check whether the alpha shape has any perimeter points.
+
+        Returns
+        -------
+        bool
+            True if no perimeter has been constructed, False otherwise.
+        """
+
         return len(self.perimeter_points) == 0
 
     @property
     def triangle_faces(self) -> List[np.ndarray]:
+        """
+        Return all triangles (simplices) of the alpha shape in unit vector coordinates.
+
+        Returns
+        -------
+        List[np.ndarray]
+            List of (3, 3) arrays representing triangle vertices as 3D unit vectors.
+        """
+
         return [self.points[list(s)] for s in self.simplices]
 
     @property
-    def triangle_faces_latlon(self):
+    def triangle_faces_latlon(self) -> List[np.ndarray]:
+        """
+        Return all triangles (simplices) of the alpha shape in (latitude, longitude) degrees.
+
+        Returns
+        -------
+        List[np.ndarray]
+            List of (3, 2) arrays representing triangle vertices in (lat, lon).
+        """
+
         return [self.points_latlon[list(s)] for s in self.simplices]
 
