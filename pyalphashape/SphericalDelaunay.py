@@ -9,8 +9,23 @@ from sphere_utils import (
 )
 
 
-
 class SphericalDelaunay:
+    """
+    Computes a spherical Delaunay triangulation from latitude–longitude points.
+
+    Automatically selects between a hemispheric gnomonic projection method and a
+    global convex hull approach to construct valid triangulations on the unit sphere.
+
+    Parameters
+    ----------
+    latlon_coords : np.ndarray
+        An (N, 2) array of latitude and longitude values in degrees.
+    assume_hemispheric : Optional[bool], optional
+        - If True: force hemispheric (gnomonic) method.
+        - If False: force convex hull method.
+        - If None (default): decide automatically via dot-product with centroid vector.
+    """
+
     def __init__(
         self,
         latlon_coords: np.ndarray,
@@ -50,12 +65,21 @@ class SphericalDelaunay:
         self.center_vec = None
         self.triangles = self._compute_spherical_delaunay()
 
-
     def _ensure_consistent_winding(self, triangles: np.ndarray) -> np.ndarray:
         """
-        Ensure all triangles are consistently wound so their normal vector points outward
-        from the origin. This is important for geodesic containment and triangle-based tests.
+        Ensure triangle vertex order produces outward-facing normals from the sphere origin.
+
+        Parameters
+        ----------
+        triangles : np.ndarray
+            Array of triangle indices.
+
+        Returns
+        -------
+        np.ndarray
+            Array of triangles with consistent vertex winding (right-hand rule).
         """
+
         corrected = []
         for tri in triangles:
             i, j, k = tri
@@ -75,9 +99,17 @@ class SphericalDelaunay:
 
     def _compute_spherical_delaunay(self) -> np.ndarray:
         """
-        Compute the spherical Delaunay triangulation by computing the 3D convex hull of the unit vectors
-        and removing the single largest-area triangle (which corresponds to the cap over the convex hull).
+        Construct a spherical Delaunay triangulation using a 3D convex hull.
+
+        The largest triangle (which covers the convex cap) is excluded to maintain
+        consistency with surface triangulations.
+
+        Returns
+        -------
+        np.ndarray
+            Array of triangle indices representing the surface triangulation.
         """
+
         hull = ConvexHull(self.points_xyz)
         triangles = hull.simplices
 
@@ -93,19 +125,53 @@ class SphericalDelaunay:
         valid_triangles = np.delete(triangles, max_index, axis=0)
         return self._ensure_consistent_winding(valid_triangles)
 
-
     @property
-    def simplices(self):
+    def simplices(self) -> np.ndarray:
+        """
+        Return the triangle indices of the spherical Delaunay triangulation.
+
+        Returns
+        -------
+        np.ndarray
+            Array of shape (M, 3) containing indices of triangle corners.
+        """
+
         return self.triangles
 
-    def get_triangles(self):
-        """Alias for compatibility with scipy.spatial.Delaunay."""
+    def get_triangles(self) -> np.ndarray:
+        """
+        Alias for `self.triangles`. Mimics `scipy.spatial.Delaunay.simplices`.
+
+        Returns
+        -------
+        np.ndarray
+            Triangle indices of the triangulation.
+        """
+
         return self.triangles
 
-    def get_triangle_coords(self):
-        """Returns Nx3x2 array of lat/lon coordinates of triangle corners."""
+    def get_triangle_coords(self) -> np.ndarray:
+        """
+        Return triangle vertex coordinates in (latitude, longitude) degrees.
+
+        Returns
+        -------
+        np.ndarray
+            Array of shape (M, 3, 2), where M is the number of triangles and
+            each triangle contains 3 (lat, lon) pairs.
+        """
+
         return self.latlon[self.triangles]
 
-    def __repr__(self):
+    def __repr__(self) -> str:
+        """
+        Return a string representation of the triangulation object.
+
+        Returns
+        -------
+        str
+            String indicating the triangulation method and number of triangles.
+        """
+
         return f"<SphericalDelaunay(method='{self.method}', n_triangles={len(self.triangles)})>"
 
