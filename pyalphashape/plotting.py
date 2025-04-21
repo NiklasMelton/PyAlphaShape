@@ -14,19 +14,19 @@ def plot_polygon_edges(
     line_width: float = 1.0,
 ):
     """
-    Plots a convex polygon given its vertices using Matplotlib.
+    Plot a set of polygon edges on a 2D or 3D Matplotlib axis.
 
     Parameters
     ----------
-    vertices : np.ndarray
-        A list of edges representing a polygon.
+    edges : np.ndarray
+        An array of shape (n, 2) where each entry is a pair of points (each a coordinate array)
+        representing an edge of the polygon.
     ax : matplotlib.axes.Axes
-        A matplotlib Axes object to plot on.
+        A Matplotlib Axes object (2D or 3D) to plot on.
     line_color : str, optional
-        The color of the polygon lines, by default 'b'.
+        Color of the edges, by default 'b'.
     line_width : float, optional
-        The width of the polygon lines, by default 1.0.
-
+        Width of the edge lines, by default 1.0.
     """
     for p1, p2 in edges:
         x = [p1[0], p2[0]]
@@ -51,11 +51,25 @@ def plot_polygon_edges(
             )
 
 
-def interpolate_great_arc(A, B, num_points=100):
+def interpolate_great_arc(A: np.ndarray, B: np.ndarray, num_points: int = 100) -> np.ndarray:
     """
-    Interpolate points along the great arc between unit vectors A and B on the sphere.
-    Returns a (num_points, 3) array of 3D unit vectors.
+    Compute evenly spaced points along the great arc connecting two points on the unit sphere.
+
+    Parameters
+    ----------
+    A : np.ndarray
+        A 3D unit vector representing the starting point.
+    B : np.ndarray
+        A 3D unit vector representing the ending point.
+    num_points : int, optional
+        Number of interpolation points along the arc, by default 100.
+
+    Returns
+    -------
+    np.ndarray
+        Array of shape (num_points, 3) containing interpolated points on the unit sphere.
     """
+
     A = A / np.linalg.norm(A)
     B = B / np.linalg.norm(B)
     dot = np.clip(np.dot(A, B), -1.0, 1.0)
@@ -72,9 +86,20 @@ def interpolate_great_arc(A, B, num_points=100):
 
 
 def plot_spherical_triangulation(
-        triangulation: SphericalDelaunay,
-        title: str="Spherical Triangulation"
+    triangulation: SphericalDelaunay,
+    title: str = "Spherical Triangulation"
 ):
+    """
+    Visualize a spherical Delaunay triangulation using Plotly.
+
+    Parameters
+    ----------
+    triangulation : SphericalDelaunay
+        The triangulation object containing 3D coordinates and triangle indices.
+    title : str, optional
+        Title for the 3D plot, by default "Spherical Triangulation".
+    """
+
     # Sphere surface
     u, v = np.mgrid[0:2*np.pi:60j, 0:np.pi:30j]
     xs = np.cos(u) * np.sin(v)
@@ -132,11 +157,26 @@ def plot_spherical_triangulation(
     fig.show()
 
 def plot_alpha_shape(
-        shape: AlphaShape,
-        ax: Optional[Axes] = None,
-        line_width: int = 1,
-        line_color: Any = "r"
+    shape: AlphaShape,
+    ax: Optional[Axes] = None,
+    line_width: int = 1,
+    line_color: Any = "r"
 ):
+    """
+    Plot a 2D alpha shape perimeter using Matplotlib.
+
+    Parameters
+    ----------
+    shape : AlphaShape
+        The alpha shape object whose perimeter edges will be plotted.
+    ax : matplotlib.axes.Axes, optional
+        An optional Matplotlib axis to plot on. A new figure is created if None.
+    line_width : int, optional
+        Width of the perimeter lines, by default 1.
+    line_color : Any, optional
+        Color of the perimeter lines, by default 'r'.
+    """
+
     edges = [(e1, e2) for e1, e2 in shape.perimeter_edges]
 
     if ax is None:
@@ -146,11 +186,26 @@ def plot_alpha_shape(
     )
 
 def plot_sperical_alpha_shape(
-        shape: SphericalAlphaShape,
-        line_width: int = 1,
-        line_color: Any = "r",
-        title: str="Spherical Alpha Shape"
+    shape: SphericalAlphaShape,
+    line_width: int = 1,
+    line_color: Any = "r",
+    title: str = "Spherical Alpha Shape"
 ):
+    """
+    Visualize the perimeter of a spherical alpha shape using Plotly on a 3D sphere.
+
+    Parameters
+    ----------
+    shape : SphericalAlphaShape
+        The alpha shape object defined on the surface of the unit sphere.
+    line_width : int, optional
+        Width of the perimeter arcs, by default 1.
+    line_color : Any, optional
+        Color of the perimeter arcs, by default 'r'.
+    title : str, optional
+        Title for the 3D plot, by default "Spherical Alpha Shape".
+    """
+
     edges = [(e1, e2) for e1, e2 in shape.perimeter_edges]
 
     # Sphere surface
