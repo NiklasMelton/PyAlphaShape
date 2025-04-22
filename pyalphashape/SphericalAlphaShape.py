@@ -40,6 +40,7 @@ class SphericalAlphaShape:
         self.simplices: Set[Tuple[int, ...]] = set()
         self.perimeter_edges: List[Tuple[np.ndarray, np.ndarray]] = []
         self.perimeter_points: np.ndarray | None = None
+        self.perimeter_points_latlon: np.ndarray | None = None
         self.GCT = GraphClosureTracker(len(points))
 
         # build once
@@ -97,7 +98,7 @@ class SphericalAlphaShape:
 
         return False
 
-    def add_points(self, new_pts: np.ndarray) -> None:
+    def add_points(self, new_pts: np.ndarray, perimeter_only: bool = False) -> None:
         """
         Add new latitude-longitude points and rebuild the spherical alpha shape.
 
@@ -105,9 +106,13 @@ class SphericalAlphaShape:
         ----------
         new_pts : np.ndarray
             An (M, 2) array of new points in degrees [lat, lon].
+        perimeter_only: bool
+            If True, only pass perimeter points to new shape. Otherwise, pass all points
         """
-
-        pts = np.vstack([self.points_latlon, new_pts])
+        if perimeter_only:
+            pts = np.vstack([self.perimeter_points_latlon, new_pts])
+        else:
+            pts = np.vstack([self.points_latlon, new_pts])
         self.__init__(pts, alpha=self.alpha)
 
     def _get_boundary_faces(self) -> Set[Tuple[int, ...]]:
@@ -197,6 +202,7 @@ class SphericalAlphaShape:
         n = len(pts)
         if n < dim + 1:
             self.perimeter_points = pts
+            self.perimeter_points_latlon = pts_latlon
             return
 
         r_filter = np.inf if self.alpha <= 0 else 1.0 / self.alpha
@@ -276,7 +282,10 @@ class SphericalAlphaShape:
 
         # ---------- 4.  store perimeter ----------------------------------
         self.perimeter_points = pts[list(sorted(perim_idx))]
+        self.perimeter_points_latlon = pts_latlon[list(sorted(perim_idx))]
         self.perimeter_edges = [(pts[i], pts[j]) for f in edges
+                                for i, j in itertools.combinations(f, 2)]
+        self.perimeter_edges_latlon = [(pts_latlon[i], pts_latlon[j]) for f in edges
                                 for i, j in itertools.combinations(f, 2)]
 
     @property

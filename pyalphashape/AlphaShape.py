@@ -160,7 +160,7 @@ class AlphaShape:
                 continue
         return False
 
-    def add_points(self, new_pts: np.ndarray) -> None:
+    def add_points(self, new_pts: np.ndarray, perimeter_only: bool = False) -> None:
         """
         Add new points to the alpha shape (batch rebuild).
 
@@ -168,9 +168,14 @@ class AlphaShape:
         ----------
         new_pts : np.ndarray
             A (N, d) array of new points to add. The alpha shape is rebuilt.
+        perimeter_only: bool
+            If True, only pass perimeter points to new shape. Otherwise, pass all points
         """
 
-        pts = np.vstack([self.points, new_pts])
+        if perimeter_only:
+            pts = np.vstack([self.points, new_pts])
+        else:
+            pts = np.vstack([self.perimeter_points, new_pts])
         self.__init__(pts, alpha=self.alpha)
 
     def _get_boundary_faces(self) -> Set[Tuple[int, ...]]:
