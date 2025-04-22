@@ -1,5 +1,6 @@
 import itertools
 import logging
+from collections import defaultdict
 from scipy.spatial import Delaunay
 import numpy as np
 from typing import Tuple, Set, List, Literal, Optional
@@ -93,12 +94,16 @@ class AlphaShape:
         The α parameter controlling the "tightness" of the shape. Default is 0.
     connectivity : {"strict", "relaxed"}, optional
         Connectivity rule for filtering simplices. Default is "strict".
+    ensure_closure : bool, default True
+        If True, triangles that are otherwise too large but are fully enclosed by
+        accepted triangles will be included. This prevents holes
     """
 
     def __init__(self,
                  points: np.ndarray,
                  alpha: float = 0.,
-                 connectivity: Literal["strict", "relaxed"] = "strict"
+                 connectivity: Literal["strict", "relaxed"] = "strict",
+                 ensure_closure: bool = True
     ):
         self._dim = points.shape[1]
         if self._dim < 2:
@@ -108,6 +113,7 @@ class AlphaShape:
         if connectivity not in {"strict", "relaxed"}:
             raise ValueError("connectivity must be 'strict' or 'relaxed'")
         self.connectivity = connectivity
+        self.ensure_closure = ensure_closure
 
         self.points = np.asarray(points, dtype=float)
 
@@ -297,31 +303,70 @@ class AlphaShape:
 
         # ---------- 2.  strict‑mode pruning ------------------------------
         if self.connectivity == "strict":
-            comp_sizes = {root: len(nodes) for root, nodes in uf.components.items()}
+            # Build full graph from all triangles that satisfy the alpha condition
+            all_passed = [simp for simp, r in simplices if r <= r_filter]
+
+            # Track edge-connected components
+            gct = GraphClosureTracker(n)
+            for simp in all_passed:
+                gct.add_fully_connected_subgraph(simp)
+
+            # Identify the largest connected component
+            comp_sizes = {root: len(nodes) for root, nodes in gct.components.items()}
             main_root = max(comp_sizes, key=comp_sizes.get)
-            main_verts = uf.components[main_root]
-            kept = [s for s in kept if set(s) <= main_verts]
+            main_verts = gct.components[main_root]
+
+            # Build edge-to-triangle map
+            edge_to_triangles = defaultdict(list)
+            for simp in all_passed:
+                for edge in itertools.combinations(simp, 2):
+                    edge = tuple(sorted(edge))
+                    edge_to_triangles[edge].append(simp)
+
+            # Keep only triangles in the main component that share an edge with another
+            kept = []
+            for simp in all_passed:
+                if not set(simp) <= main_verts:
+                    continue
+                shares_edge = any(
+                    len(edge_to_triangles[tuple(sorted(edge))]) > 1
+                    for edge in itertools.combinations(simp, 2)
+                )
+                if shares_edge:
+                    kept.append(simp)
+
+            # ---------- 2.5 patch triangle holes -----------------------------
+            if getattr(self, "ensure_closure", False):
+                existing = set(kept)
+                for simp, r in simplices:
+                    if simp in existing:
+                        continue  # already included
+                    if not set(simp) <= main_verts:
+                        continue  # not in main component
+                    edge_shared = all(
+                        len(edge_to_triangles[tuple(sorted(edge))]) > 0
+                        for edge in itertools.combinations(simp, 2)
+                    )
+                    if edge_shared:
+                        kept.append(simp)
 
         # ---------- 3.  rebuild perimeter from *kept* simplices ----------
         self.simplices = set(kept)
         self.GCT = GraphClosureTracker(n)  # final tracker
-        edges, perim_idx = set(), set()
+        edge_counts = defaultdict(int)
 
         for s in self.simplices:
             self.GCT.add_fully_connected_subgraph(list(s))
-
-            for f in itertools.combinations(s, dim):  # (d-1)-faces
-                f = tuple(sorted(f))
-                if f in edges:
-                    edges.remove(f)
-                else:
-                    edges.add(f)
-                    perim_idx.update(f)
+            for edge in itertools.combinations(s, 2):  # triangle edges
+                edge = tuple(sorted(edge))
+                edge_counts[edge] += 1
 
         # ---------- 4.  store perimeter ----------------------------------
+        perimeter_edges_idx = [e for e, count in edge_counts.items() if count == 1]
+        perim_idx = set(i for e in perimeter_edges_idx for i in e)
+
         self.perimeter_points = pts[list(sorted(perim_idx))]
-        self.perimeter_edges = [(pts[i], pts[j]) for f in edges
-                                for i, j in itertools.combinations(f, 2)]
+        self.perimeter_edges = [(pts[i], pts[j]) for i, j in perimeter_edges_idx]
 
     @property
     def is_empty(self) -> bool:

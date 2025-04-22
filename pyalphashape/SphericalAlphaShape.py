@@ -1,5 +1,6 @@
 import numpy as np
 import itertools
+from collections import defaultdict
 from typing import Literal, Set, Tuple, List, Optional
 from pyalphashape.SphericalDelaunay import SphericalDelaunay
 from pyalphashape.sphere_utils import (
@@ -252,7 +253,6 @@ class SphericalAlphaShape:
             main_verts = gct.components[main_root]
 
             # Build edge-to-triangle map
-            from collections import defaultdict
             edge_to_triangles = defaultdict(list)
             for simp in all_passed:
                 for edge in itertools.combinations(simp, 2):
