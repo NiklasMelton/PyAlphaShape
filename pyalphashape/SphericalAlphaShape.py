@@ -22,12 +22,16 @@ class SphericalAlphaShape:
         The α parameter controlling shape detail. Smaller values yield tighter shapes.
     connectivity : {"strict", "relaxed"}, optional
         Rule for keeping connected components during filtering.
+    ensure_closure : bool, default True
+        If True, triangles that are otherwise too large but are fully enclosed by
+        accepted triangles will be included. This prevents holes
     """
 
     def __init__(self,
                  points: np.ndarray,
                  alpha: float = 0.,
-                 connectivity: Literal["strict", "relaxed"] = "strict"
+                 connectivity: Literal["strict", "relaxed"] = "strict",
+                 ensure_closure: bool = True
     ):
         self._dim = points.shape[1]
         if self._dim < 2:
@@ -37,6 +41,7 @@ class SphericalAlphaShape:
         if connectivity not in {"strict", "relaxed"}:
             raise ValueError("connectivity must be 'strict' or 'relaxed'")
         self.connectivity = connectivity
+        self.ensure_closure = ensure_closure
 
         self.points_latlon = np.asarray(points, dtype=float)
         self.points = latlon_to_unit_vectors(self.points_latlon)
@@ -254,6 +259,7 @@ class SphericalAlphaShape:
                     edge = tuple(sorted(edge))
                     edge_to_triangles[edge].append(simp)
 
+
             # Keep only triangles that:
             # (a) have all vertices in the main component, and
             # (b) share at least one edge with another triangle
@@ -267,6 +273,23 @@ class SphericalAlphaShape:
                 )
                 if shares_edge:
                     kept.append(simp)
+
+            # ---------- 2.5 patch triangle holes -----------------------------
+            if self.ensure_closure:
+                # Re-add triangles that were excluded but all their edges are shared
+                # (likely fully enclosed and cause small holes)
+                existing = set(kept)
+                for simp, r in simplices:
+                    if simp in existing:
+                        continue  # already included
+                    if not set(simp) <= main_verts:
+                        continue  # not in main component
+                    edge_shared = all(
+                        len(edge_to_triangles[tuple(sorted(edge))]) > 0
+                        for edge in itertools.combinations(simp, 2)
+                    )
+                    if edge_shared:
+                        kept.append(simp)
 
         # ---------- 3.  rebuild perimeter from *kept* simplices ----------
         self.simplices = set(kept)
