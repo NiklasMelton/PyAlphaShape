@@ -3,7 +3,7 @@ import logging
 from scipy.spatial import Delaunay
 import numpy as np
 from typing import Tuple, Set, List, Literal, Optional
-from GraphClosure import GraphClosureTracker
+from pyalphashape.GraphClosure import GraphClosureTracker
 
 
 def circumcenter(points: np.ndarray) -> np.ndarray:

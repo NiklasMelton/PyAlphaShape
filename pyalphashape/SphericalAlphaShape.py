@@ -2,8 +2,12 @@ import numpy as np
 import itertools
 from typing import Literal, Set, Tuple, List, Optional
 from pyalphashape.SphericalDelaunay import SphericalDelaunay
-from sphere_utils import latlon_to_unit_vectors, arc_distance, spherical_circumradius
-from GraphClosure import GraphClosureTracker
+from pyalphashape.sphere_utils import (
+    latlon_to_unit_vectors,
+    arc_distance,
+    spherical_circumradius
+)
+from pyalphashape.GraphClosure import GraphClosureTracker
 
 
 class SphericalAlphaShape:
