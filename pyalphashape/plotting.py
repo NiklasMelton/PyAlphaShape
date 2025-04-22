@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 from pyalphashape.AlphaShape import AlphaShape
 from pyalphashape.SphericalAlphaShape import SphericalAlphaShape
 from pyalphashape.SphericalDelaunay import SphericalDelaunay
-from typing import Any, Optional
+from typing import Any, Optional, Tuple, List, Dict
 from matplotlib.axes import Axes
 from mpl_toolkits.mplot3d import Axes3D  # noqa
 import numpy as np
@@ -280,6 +280,81 @@ def plot_alpha_shape(
     )
 
 
+import numpy as np
+from typing import Tuple, Dict, List
+
+def generate_geodesic_fill_mesh(
+    shape: 'SphericalAlphaShape',
+    resolution: int = 10
+) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    Generate a unified, watertight geodesic mesh to fill the interior of a spherical alpha shape.
+    All triangle interiors are subdivided and projected back to the sphere to prevent gaps.
+
+    Parameters
+    ----------
+    shape : SphericalAlphaShape
+        The alpha shape instance with triangle faces.
+    resolution : int, optional
+        Number of subdivisions per triangle edge. Higher means smoother (default: 10).
+
+    Returns
+    -------
+    vertices : np.ndarray
+        Array of shape (N, 3) of points on the unit sphere.
+    faces : np.ndarray
+        Array of shape (M, 3) of triangle indices into `vertices`.
+    """
+
+    def slerp(a: np.ndarray, b: np.ndarray, t: float) -> np.ndarray:
+        """Spherical linear interpolation between unit vectors a and b."""
+        dot = np.clip(np.dot(a, b), -1.0, 1.0)
+        theta = np.arccos(dot)
+        if theta < 1e-8:
+            return a
+        return (np.sin((1 - t) * theta) * a + np.sin(t * theta) * b) / np.sin(theta)
+
+    vertices: List[np.ndarray] = []
+    vertex_cache: Dict[Tuple[float, float, float], int] = {}
+    faces: List[Tuple[int, int, int]] = []
+
+    def add_vertex(v: np.ndarray) -> int:
+        v /= np.linalg.norm(v)
+        key = tuple(np.round(v, 8))
+        if key not in vertex_cache:
+            vertex_cache[key] = len(vertices)
+            vertices.append(v)
+        return vertex_cache[key]
+
+    for triangle in shape.triangle_faces:
+        A, B, C = triangle
+        index_grid = []
+
+        for i in range(resolution + 1):
+            row = []
+            t_ac = i / resolution
+            a_c = slerp(A, C, t_ac)
+            b_c = slerp(B, C, t_ac)
+            for j in range(i + 1):
+                t = j / i if i > 0 else 0.0
+                pt = slerp(a_c, b_c, t)
+                idx = add_vertex(pt)
+                row.append(idx)
+            index_grid.append(row)
+
+        for i in range(resolution):
+            for j in range(i + 1):
+                v0 = index_grid[i][j]
+                v1 = index_grid[i + 1][j]
+                v2 = index_grid[i + 1][j + 1]
+                faces.append((v0, v1, v2))
+                if j < i:
+                    v3 = index_grid[i][j + 1]
+                    faces.append((v0, v2, v3))
+
+    return np.array(vertices), np.array(faces)
+
+
 def plot_spherical_alpha_shape(
     shape: SphericalAlphaShape,
     line_width: float = 1.5,
@@ -347,9 +422,12 @@ def plot_spherical_alpha_shape(
 
         # Optional filled triangles
         if fill:
-            for triangle in shape.triangle_faces:
-                x, y, z = triangle[:, 0], triangle[:, 1], triangle[:, 2]
-                ax.plot_trisurf(x, y, z, color=fill_color, alpha=fill_alpha, edgecolor='none')
+            verts, tris = generate_geodesic_fill_mesh(shape, resolution=20)
+            ax.plot_trisurf(
+                verts[:, 0], verts[:, 1], verts[:, 2],
+                triangles=tris,
+                color=fill_color, alpha=fill_alpha, edgecolor="none"
+            )
 
         # Arcs
         for A, B in shape.perimeter_edges:
@@ -363,7 +441,7 @@ def plot_spherical_alpha_shape(
 
         return ax
 
-    return _plot_sperical_alpha_shape_plotly(
+    return _plot_spherical_alpha_shape_plotly(
         shape, line_width, line_color, marker_size, marker_color, marker_symbol,
         title, fig, fill, fill_color, fill_alpha
     )
@@ -432,15 +510,14 @@ def _plot_spherical_alpha_shape_plotly(
 
     # Optional filled triangles
     if fill:
-        for triangle in shape.triangle_faces:
-            x, y, z = triangle[:, 0], triangle[:, 1], triangle[:, 2]
-            fig.add_trace(go.Mesh3d(
-                x=x, y=y, z=z,
-                i=[0], j=[1], k=[2],
-                color=fill_color,
-                opacity=fill_alpha,
-                showscale=False
-            ))
+        verts, tris = generate_geodesic_fill_mesh(shape, resolution=20)
+        fig.add_trace(go.Mesh3d(
+            x=verts[:, 0], y=verts[:, 1], z=verts[:, 2],
+            i=tris[:, 0], j=tris[:, 1], k=tris[:, 2],
+            color=fill_color,
+            opacity=fill_alpha,
+            showscale=False
+        ))
 
     for A, B in shape.perimeter_edges:
         arc_pts = interpolate_great_arc(A, B)
