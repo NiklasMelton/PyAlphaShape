@@ -407,9 +407,7 @@ def _plot_sperical_alpha_shape_plotly(
             name='Sphere'
         ))
 
-    for e1, e2 in shape.perimeter_edges:
-        A = shape.points[e1]
-        B = shape.points[e2]
+    for A, B in shape.perimeter_edges:
         arc_pts = interpolate_great_arc(A, B)
         fig.add_trace(go.Scatter3d(
             x=arc_pts[:, 0], y=arc_pts[:, 1], z=arc_pts[:, 2],

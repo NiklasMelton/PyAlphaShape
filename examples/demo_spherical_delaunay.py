@@ -18,5 +18,7 @@ tri_hemisphere = SphericalDelaunay(latlon_hemisphere)
 tri_global = SphericalDelaunay(latlon_global)
 
 # Plot both examples
-plot_spherical_triangulation(tri_hemisphere, title="Hemispherical Triangulation")
-plot_spherical_triangulation(tri_global, title="Global Triangulation")
+fig = plot_spherical_triangulation(tri_hemisphere, title="Hemispherical Triangulation")
+fig.show()
+fig = plot_spherical_triangulation(tri_global, title="Global Triangulation")
+fig.show()
