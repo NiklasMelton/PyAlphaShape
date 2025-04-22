@@ -2,7 +2,7 @@
 import numpy as np
 from scipy.spatial import ConvexHull, Delaunay
 from typing import Optional
-from sphere_utils import (
+from pyalphashape.sphere_utils import (
     latlon_to_unit_vectors,
     unit_vector, gnomonic_projection,
     spherical_triangle_area
