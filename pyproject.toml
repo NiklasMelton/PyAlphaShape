@@ -28,6 +28,7 @@ python = ">=3.9,<4.0"
 numpy = ">=1.19.4"
 scipy = ">=1.5.4"
 matplotlib = ">=3.3.3"
+plotly = ">=5.0.0"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
