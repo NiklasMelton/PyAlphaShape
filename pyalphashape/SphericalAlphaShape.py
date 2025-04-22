@@ -69,7 +69,7 @@ class SphericalAlphaShape:
 
         return self.perimeter_points
 
-    def contains_point(self, pt_latlon: np.ndarray) -> bool:
+    def contains_point(self, pt_latlon: np.ndarray, tol: float = 1e-8) -> bool:
         """
         Check whether a (lat, lon) point lies within the spherical alpha shape.
 
@@ -77,6 +77,8 @@ class SphericalAlphaShape:
         ----------
         pt_latlon : np.ndarray
             A (2,) array representing a point in [latitude, longitude] degrees.
+        tol : float
+            Tolerance in radians for angular comparison.
 
         Returns
         -------
@@ -87,12 +89,40 @@ class SphericalAlphaShape:
         if len(self.simplices) == 0:
             return False
 
-        # Convert (1, 2) input to (1, 3) unit vector
         pt = latlon_to_unit_vectors(pt_latlon[None, :])[0]
 
+        # 1. Check proximity to perimeter points
+        dot_prods = np.dot(self.perimeter_points, pt)
+        if np.any(np.arccos(np.clip(dot_prods, -1.0, 1.0)) < tol):
+            return True
+
+        # 2. Check proximity to perimeter edges (great-circle segments)
+        for a, b in self.perimeter_edges:
+            # Ensure unit vectors
+            a = a / np.linalg.norm(a)
+            b = b / np.linalg.norm(b)
+
+            # Check angular distance to segment
+            cross = np.cross(a, b)
+            norm_cross = np.linalg.norm(cross)
+            if norm_cross < tol:
+                continue  # Degenerate edge
+
+            cross /= norm_cross
+            proj = pt - np.dot(pt, cross) * cross
+            proj /= np.linalg.norm(proj)
+
+            # Check if projection lies between a and b on the great circle
+            ang_a = np.arccos(np.clip(np.dot(a, proj), -1.0, 1.0))
+            ang_b = np.arccos(np.clip(np.dot(b, proj), -1.0, 1.0))
+            ang_ab = np.arccos(np.clip(np.dot(a, b), -1.0, 1.0))
+
+            if np.abs(ang_a + ang_b - ang_ab) < tol:
+                return True
+
+        # 3. Triangle containment test
         for s in self.simplices:
-            verts = self.points[list(s)]
-            A, B, C = verts
+            A, B, C = self.points[list(s)]
 
             nAB = np.cross(A, B)
             nBC = np.cross(B, C)
@@ -103,7 +133,6 @@ class SphericalAlphaShape:
             sign3 = np.sign(np.dot(nCA, pt))
 
             if (sign1 == sign2 == sign3) or (np.abs(sign1 + sign2 + sign3) >= 2.9):
-                # Either all signs are equal or numerically very close
                 return True
 
         return False

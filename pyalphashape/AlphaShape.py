@@ -138,14 +138,16 @@ class AlphaShape:
 
         return self.perimeter_points
 
-    def contains_point(self, pt: np.ndarray) -> bool:
+    def contains_point(self, pt: np.ndarray, tol: float = 1e-8) -> bool:
         """
-        Check whether a given point lies inside the alpha shape.
+        Check whether a given point lies inside or on the alpha shape.
 
         Parameters
         ----------
         pt : np.ndarray
             A point of shape (d,) to test for inclusion.
+        tol : float
+            Tolerance used for numerical comparisons.
 
         Returns
         -------
@@ -155,15 +157,33 @@ class AlphaShape:
 
         if len(self.simplices) == 0:
             return False
+
+        # 1. Check if it's close to any perimeter point
+        if np.any(np.linalg.norm(self.perimeter_points - pt, axis=1) < tol):
+            return True
+
+        # 2. Check if it's on any perimeter edge
+        for a, b in self.perimeter_edges:
+            ab = b - a
+            ap = pt - a
+            proj_len = np.dot(ap, ab) / np.dot(ab, ab)
+            if 0.0 - tol <= proj_len <= 1.0 + tol:
+                closest = a + proj_len * ab
+                if np.linalg.norm(closest - pt) < tol:
+                    return True
+
+        # 3. Check interior using barycentric coordinates
         for s in self.simplices:
             verts = self.points[list(s)]
             try:
                 A = np.vstack([verts.T, np.ones(len(verts))])
-                bary = np.linalg.solve(A, np.append(pt, 1.0))
-                if np.all(bary >= 0):
+                b = np.append(pt, 1.0)
+                bary = np.linalg.lstsq(A.T, b, rcond=None)[0]
+                if np.all(bary >= -tol):
                     return True
             except np.linalg.LinAlgError:
                 continue
+
         return False
 
     def add_points(self, new_pts: np.ndarray, perimeter_only: bool = False) -> None:
