@@ -9,7 +9,8 @@ from pyalphashape.AlphaShape import AlphaShape
 from pyalphashape.plotting import (
     plot_spherical_triangulation,
     plot_alpha_shape,
-    plot_spherical_alpha_shape
+    plot_spherical_alpha_shape,
+    plot_polygon_edges
 )
 
 __all__ = [
@@ -22,4 +23,5 @@ __all__ = [
     "plot_alpha_shape",
     "plot_spherical_alpha_shape",
     "plot_spherical_triangulation",
+    "plot_polygon_edges"
 ]
