@@ -271,26 +271,24 @@ class SphericalAlphaShape:
         # ---------- 3.  rebuild perimeter from *kept* simplices ----------
         self.simplices = set(kept)
         self.GCT = GraphClosureTracker(n)  # final tracker
-        edges, perim_idx = set(), set()
 
+        edge_counts = defaultdict(int)
         for s in self.simplices:
             self.GCT.add_fully_connected_subgraph(list(s))
-
-            for f in itertools.combinations(s, dim):  # (d-1)-faces
-                f = tuple(sorted(f))
-                if f in edges:
-                    edges.remove(f)
-                else:
-                    edges.add(f)
-                    perim_idx.update(f)
+            for edge in itertools.combinations(s, 2):  # triangle edges
+                edge = tuple(sorted(edge))
+                edge_counts[edge] += 1
 
         # ---------- 4.  store perimeter ----------------------------------
+        # Only edges that appear once are on the perimeter
+        perimeter_edges_idx = [e for e, count in edge_counts.items() if count == 1]
+        perim_idx = set(i for e in perimeter_edges_idx for i in e)
+
         self.perimeter_points = pts[list(sorted(perim_idx))]
         self.perimeter_points_latlon = pts_latlon[list(sorted(perim_idx))]
-        self.perimeter_edges = [(pts[i], pts[j]) for f in edges
-                                for i, j in itertools.combinations(f, 2)]
-        self.perimeter_edges_latlon = [(pts_latlon[i], pts_latlon[j]) for f in edges
-                                for i, j in itertools.combinations(f, 2)]
+        self.perimeter_edges = [(pts[i], pts[j]) for i, j in perimeter_edges_idx]
+        self.perimeter_edges_latlon = [(pts_latlon[i], pts_latlon[j]) for i, j in
+                                       perimeter_edges_idx]
 
     @property
     def is_empty(self) -> bool:
