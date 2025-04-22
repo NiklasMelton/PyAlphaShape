@@ -9,7 +9,7 @@ from pyalphashape.AlphaShape import AlphaShape
 from pyalphashape.plotting import (
     plot_spherical_triangulation,
     plot_alpha_shape,
-    plot_sperical_alpha_shape
+    plot_spherical_alpha_shape
 )
 
 __all__ = [
@@ -20,6 +20,6 @@ __all__ = [
     "SphericalAlphaShape",
     "AlphaShape",
     "plot_alpha_shape",
-    "plot_sperical_alpha_shape",
+    "plot_spherical_alpha_shape",
     "plot_spherical_triangulation",
 ]

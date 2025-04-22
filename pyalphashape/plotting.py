@@ -280,7 +280,7 @@ def plot_alpha_shape(
     )
 
 
-def plot_sperical_alpha_shape(
+def plot_spherical_alpha_shape(
     shape: SphericalAlphaShape,
     line_width: float = 1.5,
     line_color: Any = "red",
@@ -290,7 +290,10 @@ def plot_sperical_alpha_shape(
     marker_symbol: Optional[str] = "circle",
     title: str = "Spherical Alpha Shape",
     fig: Optional[go.Figure] = None,
-    ax: Optional[Axes] = None
+    ax: Optional[Axes] = None,
+    fill: bool = True,
+    fill_color: Any = "skyblue",
+    fill_alpha: float = 0.4
 ):
     """
     Visualize the perimeter of a spherical alpha shape using either Matplotlib or Plotly.
@@ -317,6 +320,12 @@ def plot_sperical_alpha_shape(
         Existing Plotly figure to modify. A new one is created if None.
     ax : matplotlib.axes.Axes, optional
         Existing Matplotlib 3D axis to plot on. If provided, Matplotlib is used.
+    fill : bool, optional
+        Whether to fill the interior area (alpha shape). Default is True.
+    fill_color : Any, optional
+        Color to fill the alpha shape surface. Default is "skyblue".
+    fill_alpha : float, optional
+        Transparency of the filled surface. Default is 0.4.
 
     Returns
     -------
@@ -336,10 +345,14 @@ def plot_sperical_alpha_shape(
         zs = np.cos(v)
         ax.plot_surface(xs, ys, zs, color="lightgrey", alpha=0.15, linewidth=0)
 
+        # Optional filled triangles
+        if fill:
+            for triangle in shape.triangle_faces:
+                x, y, z = triangle[:, 0], triangle[:, 1], triangle[:, 2]
+                ax.plot_trisurf(x, y, z, color=fill_color, alpha=fill_alpha, edgecolor='none')
+
         # Arcs
-        for e1, e2 in shape.perimeter_edges:
-            A = shape.points[e1]
-            B = shape.points[e2]
+        for A, B in shape.perimeter_edges:
             arc_pts = interpolate_great_arc(A, B)
             ax.plot(arc_pts[:, 0], arc_pts[:, 1], arc_pts[:, 2],
                     color=line_color, linewidth=line_width, linestyle=line_style)
@@ -351,11 +364,12 @@ def plot_sperical_alpha_shape(
         return ax
 
     return _plot_sperical_alpha_shape_plotly(
-        shape, line_width, line_color, marker_size, marker_color, marker_symbol, title, fig
+        shape, line_width, line_color, marker_size, marker_color, marker_symbol,
+        title, fig, fill, fill_color, fill_alpha
     )
 
 
-def _plot_sperical_alpha_shape_plotly(
+def _plot_spherical_alpha_shape_plotly(
     shape: SphericalAlphaShape,
     line_width: float,
     line_color: Any,
@@ -363,34 +377,43 @@ def _plot_sperical_alpha_shape_plotly(
     marker_color: Any,
     marker_symbol: Optional[str],
     title: str,
-    fig: Optional[go.Figure]
+    fig: Optional[go.Figure],
+    fill: bool,
+    fill_color: Any,
+    fill_alpha: float
 ):
     """
-    Internal helper to render a spherical alpha shape perimeter using Plotly.
+    Internal helper to render a spherical alpha shape using Plotly in 3D.
 
     Parameters
     ----------
     shape : SphericalAlphaShape
-        The alpha shape object with perimeter edges and point cloud.
+        The spherical alpha shape object containing perimeter edges, simplices, and point cloud.
     line_width : float
-        Width of perimeter arc lines.
+        Width of the perimeter arcs.
     line_color : Any
-        Color of perimeter arcs.
+        Color of the perimeter arcs.
     marker_size : float
-        Size of point markers.
+        Size of the point markers.
     marker_color : Any
-        Color of the markers.
+        Color of the point markers.
     marker_symbol : str or None
-        Marker style for Plotly (e.g., "circle", "square").
+        Plotly marker style (e.g., "circle", "square"). Ignored if None.
     title : str
-        Title of the plot.
+        Plot title for the Plotly figure.
     fig : plotly.graph_objects.Figure or None
-        Existing Plotly figure to modify or None to create a new one.
+        Existing Plotly figure to modify. If None, a new one is created.
+    fill : bool
+        Whether to shade the interior area of the alpha shape using the spherical triangles.
+    fill_color : Any
+        Fill color for the triangle mesh.
+    fill_alpha : float
+        Opacity of the filled surface. 0 is transparent, 1 is opaque.
 
     Returns
     -------
     plotly.graph_objects.Figure
-        The updated or newly created Plotly figure.
+        The Plotly figure object containing the spherical alpha shape.
     """
 
     if fig is None:
@@ -406,6 +429,18 @@ def _plot_sperical_alpha_shape_plotly(
             colorscale='Greys',
             name='Sphere'
         ))
+
+    # Optional filled triangles
+    if fill:
+        for triangle in shape.triangle_faces:
+            x, y, z = triangle[:, 0], triangle[:, 1], triangle[:, 2]
+            fig.add_trace(go.Mesh3d(
+                x=x, y=y, z=z,
+                i=[0], j=[1], k=[2],
+                color=fill_color,
+                opacity=fill_alpha,
+                showscale=False
+            ))
 
     for A, B in shape.perimeter_edges:
         arc_pts = interpolate_great_arc(A, B)

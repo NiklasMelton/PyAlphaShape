@@ -1,5 +1,5 @@
 import numpy as np
-from pyalphashape import SphericalAlphaShape, plot_sperical_alpha_shape
+from pyalphashape import SphericalAlphaShape, plot_spherical_alpha_shape
 
 # Hemispherical test dataset: cluster in northern hemisphere
 latlon_hemisphere = np.array([
@@ -19,7 +19,7 @@ alpha_global = SphericalAlphaShape(latlon_global, alpha=0.7)
 
 
 # Plot both examples
-fig = plot_sperical_alpha_shape(alpha_hemisphere, title="Hemispherical Alpha Shape")
+fig = plot_spherical_alpha_shape(alpha_hemisphere, title="Hemispherical Alpha Shape")
 fig.show()
-fig = plot_sperical_alpha_shape(alpha_global, title="Global Alpha Shape")
+fig = plot_spherical_alpha_shape(alpha_global, title="Global Alpha Shape")
 fig.show()
