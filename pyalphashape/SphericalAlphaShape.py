@@ -5,8 +5,10 @@ from typing import Literal, Set, Tuple, List, Optional
 from pyalphashape.SphericalDelaunay import SphericalDelaunay
 from pyalphashape.sphere_utils import (
     latlon_to_unit_vectors,
+    unit_vectors_to_latlon,
     arc_distance,
-    spherical_circumradius
+    spherical_circumradius,
+    spherical_triangle_area
 )
 from pyalphashape.GraphClosure import GraphClosureTracker
 
@@ -152,7 +154,8 @@ class SphericalAlphaShape:
             pts = np.vstack([self.perimeter_points_latlon, new_pts])
         else:
             pts = np.vstack([self.points_latlon, new_pts])
-        self.__init__(pts, alpha=self.alpha)
+        self.__init__(pts, alpha=self.alpha, connectivity=self.connectivity,
+                      ensure_closure=self.ensure_closure)
 
     def _get_boundary_faces(self) -> Set[Tuple[int, ...]]:
         """
@@ -380,4 +383,34 @@ class SphericalAlphaShape:
         """
 
         return [self.points_latlon[list(s)] for s in self.simplices]
+
+    @property
+    def centroid(self) -> np.ndarray:
+        """
+        Compute the center of area of the spherical alpha shape.
+
+        Returns
+        -------
+        np.ndarray
+            A (2,) array representing the centroid in [latitude, longitude] degrees.
+        """
+        if len(self.simplices) == 0:
+            return np.array([np.nan, np.nan])
+
+        total_area = 0.0
+        centroid_vec = np.zeros(3)
+
+        for s in self.simplices:
+            A, B, C = self.points[list(s)]
+            area = spherical_triangle_area(A, B, C)
+            centroid = (A + B + C) / np.linalg.norm(A + B + C)
+            centroid_vec += area * centroid
+            total_area += area
+
+        if total_area == 0.0 or np.linalg.norm(centroid_vec) == 0:
+            return np.array([np.nan, np.nan])
+
+        centroid_vec /= np.linalg.norm(centroid_vec)
+        return unit_vectors_to_latlon(centroid_vec[None])[0]
+
 

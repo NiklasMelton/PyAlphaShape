@@ -1,5 +1,6 @@
 import itertools
 import logging
+import math
 from collections import defaultdict
 from scipy.spatial import Delaunay
 import numpy as np
@@ -202,7 +203,8 @@ class AlphaShape:
             pts = np.vstack([self.points, new_pts])
         else:
             pts = np.vstack([self.perimeter_points, new_pts])
-        self.__init__(pts, alpha=self.alpha)
+        self.__init__(pts, alpha=self.alpha, connectivity=self.connectivity,
+                      ensure_closure=self.ensure_closure)
 
     def _get_boundary_faces(self) -> Set[Tuple[int, ...]]:
         """
@@ -413,3 +415,44 @@ class AlphaShape:
         """
 
         return [self.points[list(s)] for s in self.simplices]
+
+
+    @centroid
+    def centroid(self) -> np.ndarray:
+        """
+        Compute the hyper-volumetric centroid of the Euclidean alpha shape
+        using direct determinant-based simplex volume.
+
+        Returns
+        -------
+        np.ndarray
+            A (d,) array representing the centroid in Euclidean space.
+        """
+        if len(self.simplices) == 0:
+            return np.full(self._dim, np.nan)
+
+        d = self._dim
+        total_volume = 0.0
+        weighted_sum = np.zeros(d)
+
+        for s in self.simplices:
+            verts = self.points[list(s)]
+            if len(verts) != d + 1:
+                continue  # not a full-dimensional simplex
+
+            # Form matrix of edge vectors
+            mat = verts[1:] - verts[0]
+            try:
+                vol = np.abs(np.linalg.det(mat)) / math.factorial(d)
+            except np.linalg.LinAlgError:
+                continue
+
+            centroid = np.mean(verts, axis=0)
+            total_volume += vol
+            weighted_sum += vol * centroid
+
+        if total_volume == 0.0:
+            return np.mean(self.points, axis=0)
+
+        return weighted_sum / total_volume
+

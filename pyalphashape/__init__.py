@@ -1,4 +1,4 @@
-from pyalphashape.sphere_utils import latlon_to_unit_vectors
+from pyalphashape.sphere_utils import latlon_to_unit_vectors, unit_vectors_to_latlon
 from pyalphashape.SphereCap import (
     maximum_empty_spherical_cap,
     minimum_enclosing_spherical_cap
@@ -15,6 +15,7 @@ from pyalphashape.plotting import (
 
 __all__ = [
     "latlon_to_unit_vectors",
+    "unit_vectors_to_latlon",
     "maximum_empty_spherical_cap",
     "minimum_enclosing_spherical_cap",
     "SphericalDelaunay",

@@ -37,6 +37,38 @@ def latlon_to_unit_vectors(latlon: np.ndarray) -> np.ndarray:
     z = np.sin(lat)
     return np.stack([x, y, z], axis=1)
 
+
+def unit_vectors_to_latlon(vectors: np.ndarray) -> np.ndarray:
+    """
+    Convert 3D unit vectors to latitude and longitude in degrees.
+
+    Parameters
+    ----------
+    vectors : np.ndarray
+        An (N, 3) array of unit vectors in 3D Cartesian coordinates.
+
+    Returns
+    -------
+    np.ndarray
+        An (N, 2) array of [latitude, longitude] in degrees.
+    """
+    x, y, z = vectors[:, 0], vectors[:, 1], vectors[:, 2]
+    lat = np.degrees(np.arcsin(np.clip(z, -1.0, 1.0)))
+    lon = np.degrees(np.arctan2(y, x))
+    return np.stack([lat, lon], axis=1)
+
+
+def spherical_triangle_area(a, b, c):
+    # Angular area of spherical triangle via L'Huilier's formula
+    a_, b_, c_ = np.arccos(np.clip(np.dot(b, c), -1, 1)), \
+        np.arccos(np.clip(np.dot(c, a), -1, 1)), \
+        np.arccos(np.clip(np.dot(a, b), -1, 1))
+    s = 0.5 * (a_ + b_ + c_)
+    tan_e = np.tan(s / 2) * np.tan((s - a_) / 2) * \
+            np.tan((s - b_) / 2) * np.tan((s - c_) / 2)
+    E = 4 * np.arctan(np.sqrt(np.abs(tan_e)))
+    return E  # in steradians (on unit sphere)
+
 def spherical_incircle_check(
         triangle: np.ndarray,
         test_point: np.ndarray
