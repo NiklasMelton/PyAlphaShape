@@ -88,7 +88,7 @@ class SphericalAlphaShape:
             True if the point lies inside or on the alpha shape, False otherwise.
         """
 
-        if len(self.simplices) == 0:
+        if len(self.perimeter_points) == 0:
             return False
 
         pt = latlon_to_unit_vectors(pt_latlon[None, :])[0]
@@ -97,6 +97,9 @@ class SphericalAlphaShape:
         dot_prods = np.dot(self.perimeter_points, pt)
         if np.any(np.arccos(np.clip(dot_prods, -1.0, 1.0)) < tol):
             return True
+
+        if len(self.simplices) == 0:
+            return False
 
         # 2. Check proximity to perimeter edges (great-circle segments)
         for a, b in self.perimeter_edges:
@@ -170,10 +173,9 @@ class SphericalAlphaShape:
         if hasattr(self, "_boundary_faces"):
             return self._boundary_faces
 
-        dim = self._dim
         faces: Set[Tuple[int, ...]] = set()
         for s in self.simplices:
-            for f in itertools.combinations(s, dim):
+            for f in itertools.combinations(s, 2):
                 f = tuple(sorted(f))
                 if f in faces:
                     faces.remove(f)
@@ -201,10 +203,6 @@ class SphericalAlphaShape:
 
         if point.shape[-1] != 2:
             raise ValueError("Input point must be (lat, lon) in degrees")
-        if self._dim != 3:
-            raise NotImplementedError(
-                "Only implemented for points on the 2D surface of a 3D sphere"
-            )
 
         if self.contains_point(point):
             return 0.0
@@ -240,9 +238,9 @@ class SphericalAlphaShape:
         This method is automatically called on initialization.
         """
 
-        dim, pts, pts_latlon = self._dim, self.points, self.points_latlon
+        pts, pts_latlon = self.points, self.points_latlon
         n = len(pts)
-        if n < dim + 1:
+        if n < 3:
             self.perimeter_points = pts
             self.perimeter_points_latlon = pts_latlon
             return

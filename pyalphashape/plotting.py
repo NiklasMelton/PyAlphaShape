@@ -357,7 +357,7 @@ def generate_geodesic_fill_mesh(
 
 def plot_spherical_alpha_shape(
     shape: SphericalAlphaShape,
-    line_width: float = 1.5,
+    line_width: int = 1,
     line_color: Any = "red",
     line_style: str = "-",
     marker_size: float = 5,

@@ -156,12 +156,15 @@ class AlphaShape:
             True if the point lies inside or on the alpha shape; False otherwise.
         """
 
-        if len(self.simplices) == 0:
+        if len(self.perimeter_points) == 0:
             return False
 
         # 1. Check if it's close to any perimeter point
         if np.any(np.linalg.norm(self.perimeter_points - pt, axis=1) < tol):
             return True
+
+        if len(self.simplices) == 0:
+            return False
 
         # 2. Check if it's on any perimeter edge
         for a, b in self.perimeter_edges:
@@ -417,7 +420,7 @@ class AlphaShape:
         return [self.points[list(s)] for s in self.simplices]
 
 
-    @centroid
+    @property
     def centroid(self) -> np.ndarray:
         """
         Compute the hyper-volumetric centroid of the Euclidean alpha shape
