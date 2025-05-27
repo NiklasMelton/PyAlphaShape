@@ -218,7 +218,7 @@ def _plot_spherical_triangulation_plotly(
             name='Sphere'
         ))
 
-    pts = triangulation.points_xyz
+    pts = triangulation.perimeter_points
     fig.add_trace(go.Scatter3d(
         x=pts[:, 0], y=pts[:, 1], z=pts[:, 2],
         mode='markers',
@@ -436,7 +436,7 @@ def plot_spherical_alpha_shape(
                     color=line_color, linewidth=line_width, linestyle=line_style)
 
         # Points
-        pts = shape.points
+        pts = shape.perimeter_points
         ax.scatter(pts[:, 0], pts[:, 1], pts[:, 2], color=marker_color, s=marker_size**2)
 
         return ax
@@ -528,7 +528,7 @@ def _plot_spherical_alpha_shape_plotly(
             showlegend=False
         ))
 
-    pts = shape.points
+    pts = shape.perimeter_points
     fig.add_trace(go.Scatter3d(
         x=pts[:, 0], y=pts[:, 1], z=pts[:, 2],
         mode='markers',

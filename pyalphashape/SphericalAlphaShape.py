@@ -73,72 +73,60 @@ class SphericalAlphaShape:
 
     def contains_point(self, pt_latlon: np.ndarray, tol: float = 1e-8) -> bool:
         """
-        Check whether a (lat, lon) point lies within the spherical alpha shape.
+        Return ``True`` iff the latitude/longitude point lies inside *or on*
+        the spherical α‑shape.
 
         Parameters
         ----------
-        pt_latlon : np.ndarray
-            A (2,) array representing a point in [latitude, longitude] degrees.
-        tol : float
-            Tolerance in radians for angular comparison.
-
-        Returns
-        -------
-        bool
-            True if the point lies inside or on the alpha shape, False otherwise.
+        pt_latlon : (2,) array‑like
+            [latitude, longitude] **degrees**.
+        tol : float, default 1e‑8
+            Angular tolerance (radians) for vertex proximity and half‑space test.
         """
-
+        # ── 0. quick outs ──────────────────────────────────────────────────
         if len(self.perimeter_points) == 0:
             return False
 
-        pt = latlon_to_unit_vectors(pt_latlon[None, :])[0]
+        P = latlon_to_unit_vectors(pt_latlon[None, :])[0]  # unit vector
 
-        # 1. Check proximity to perimeter points
-        dot_prods = np.dot(self.perimeter_points, pt)
-        if np.any(np.arccos(np.clip(dot_prods, -1.0, 1.0)) < tol):
+        # close to a perimeter vertex?
+        if np.any(
+                np.arccos(np.clip(self.perimeter_points @ P, -1.0, 1.0)) < tol
+        ):
             return True
 
+        # no faces yet  → no enclosed area
         if len(self.simplices) == 0:
             return False
 
-        # 2. Check proximity to perimeter edges (great-circle segments)
-        for a, b in self.perimeter_edges:
-            # Ensure unit vectors
-            a = a / np.linalg.norm(a)
-            b = b / np.linalg.norm(b)
+        # ── 1. build (or fetch) oriented edge normals ─────────────────────
+        # We cache them so subsequent calls are O(#edges) only.
+        if not hasattr(self, "_edge_normals"):
+            # (a) choose an interior reference vector
+            centroid_latlon = getattr(self, "centroid", np.array([np.nan, np.nan]))
+            if np.isnan(centroid_latlon).any():
+                inside_vec = self.perimeter_points.mean(axis=0)
+                inside_vec /= np.linalg.norm(inside_vec)
+            else:
+                inside_vec = latlon_to_unit_vectors(centroid_latlon[None])[0]
 
-            # Check angular distance to segment
-            cross = np.cross(a, b)
-            norm_cross = np.linalg.norm(cross)
-            if norm_cross < tol:
-                continue  # Degenerate edge
+            normals = []
+            for A, B in self.perimeter_edges:
+                n = np.cross(A, B)  # normal to great‑circle AB
+                if np.linalg.norm(n) < 1e-12:  # degenerate edge
+                    continue
+                # orient inward so that n·inside_vec  >  0
+                if np.dot(n, inside_vec) < 0:
+                    n = -n
+                normals.append(n / np.linalg.norm(n))
 
-            cross /= norm_cross
-            proj = pt - np.dot(pt, cross) * cross
-            proj /= np.linalg.norm(proj)
+            self._edge_normals = np.vstack(normals)  # shape (E, 3)
 
-            # Check if projection lies between a and b on the great circle
-            ang_a = np.arccos(np.clip(np.dot(a, proj), -1.0, 1.0))
-            ang_b = np.arccos(np.clip(np.dot(b, proj), -1.0, 1.0))
-            ang_ab = np.arccos(np.clip(np.dot(a, b), -1.0, 1.0))
-
-            if np.abs(ang_a + ang_b - ang_ab) < tol:
-                return True
-
-        # 3. Triangle containment test
-        for s in self.simplices:
-            A, B, C = self.points[list(s)]
-
-            nAB = np.cross(A, B)
-            nBC = np.cross(B, C)
-            nCA = np.cross(C, A)
-
-            sign1 = np.sign(np.dot(nAB, pt))
-            sign2 = np.sign(np.dot(nBC, pt))
-            sign3 = np.sign(np.dot(nCA, pt))
-
-            if (sign1 == sign2 == sign3) or (np.abs(sign1 + sign2 + sign3) >= 2.9):
-                return True
+        # ── 2. half‑space test for all perimeter edges ─────────────────────
+        # Point is inside iff it lies in the "positive" half‑space of **every**
+        # edge after orientation.
+        if np.all(self._edge_normals @ P >= -tol):
+            return True
 
         return False
 
@@ -246,7 +234,11 @@ class SphericalAlphaShape:
             return
 
         r_filter = np.inf if self.alpha <= 0 else 1.0 / self.alpha
-        tri = SphericalDelaunay(pts_latlon)
+        try:
+            tri = SphericalDelaunay(pts_latlon)
+        except Exception as E:
+            print(pts_latlon)
+            raise E
 
         # ---------- 1.  main sweep ---------------------------------------
         simplices = []
