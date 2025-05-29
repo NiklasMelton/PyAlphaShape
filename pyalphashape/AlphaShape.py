@@ -159,30 +159,36 @@ class AlphaShape:
         if len(self.perimeter_points) == 0:
             return False
 
-        # 1. Check if it's close to any perimeter point
+        # 1. Close to any perimeter vertex?
         if np.any(np.linalg.norm(self.perimeter_points - pt, axis=1) < tol):
             return True
 
         if len(self.simplices) == 0:
             return False
 
-        # 2. Check if it's on any perimeter edge
+        # 2. On any perimeter edge?
         for a, b in self.perimeter_edges:
             ab = b - a
             ap = pt - a
             proj_len = np.dot(ap, ab) / np.dot(ab, ab)
-            if 0.0 - tol <= proj_len <= 1.0 + tol:
+            if -tol <= proj_len <= 1.0 + tol:
                 closest = a + proj_len * ab
                 if np.linalg.norm(closest - pt) < tol:
                     return True
 
-        # 3. Check interior using barycentric coordinates
+        # 3. Inside a simplex?  (barycentric‑coordinate test)
         for s in self.simplices:
             verts = self.points[list(s)]
             try:
-                A = np.vstack([verts.T, np.ones(len(verts))])
+                A = np.vstack([verts.T, np.ones(len(verts))])  # (d+1, d+1)
                 b = np.append(pt, 1.0)
-                bary = np.linalg.lstsq(A.T, b, rcond=None)[0]
+
+                # Full‑rank simplex → solve directly; otherwise fall back to least‑squares
+                if A.shape[0] == A.shape[1]:
+                    bary = np.linalg.solve(A, b)
+                else:
+                    bary, *_ = np.linalg.lstsq(A, b, rcond=None)
+
                 if np.all(bary >= -tol):
                     return True
             except np.linalg.LinAlgError:
