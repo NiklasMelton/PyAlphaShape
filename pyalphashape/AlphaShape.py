@@ -24,14 +24,16 @@ def circumcenter(points: np.ndarray) -> np.ndarray:
         The barycentric coordinates of the circumcenter of the simplex.
     """
 
-    num_rows, num_columns = points.shape
-    A = np.bmat([[2 * np.dot(points, points.T),
-                  np.ones((num_rows, 1))],
-                 [np.ones((1, num_rows)), np.zeros((1, 1))]])
-    b = np.hstack((np.sum(points * points, axis=1),
-                   np.ones((1))))
-    return np.linalg.solve(A, b)[:-1]
+    n, _ = points.shape
 
+    # build the (d+1) × (d+1) system with plain ndarrays
+    A = np.block([
+        [2 * points @ points.T, np.ones((n, 1))],
+        [np.ones((1, n)), np.zeros((1, 1))]
+    ])
+    b = np.concatenate([np.sum(points * points, axis=1), np.array([1.0])])
+
+    return np.linalg.solve(A, b)[:-1]
 
 
 def circumradius(points: np.ndarray) -> float:

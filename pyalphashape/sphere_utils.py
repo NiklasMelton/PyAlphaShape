@@ -105,7 +105,7 @@ def spherical_incircle_check(
     radius = np.arccos(np.clip(np.dot(center, a), -1, 1))
     dist = np.arccos(np.clip(np.dot(center, d), -1, 1))
 
-    return dist < radius - epsilon
+    return dist < radius
 
 def unit_vector(v: np.ndarray) -> np.ndarray:
     """
@@ -193,7 +193,12 @@ def spherical_triangle_area(a: np.ndarray, b: np.ndarray, c: np.ndarray) -> floa
 
     return (alpha + beta + gamma) - np.pi
 
-def arc_distance(P: np.ndarray, A: np.ndarray, B: np.ndarray) -> float:
+def arc_distance(
+        P: np.ndarray,
+        A: np.ndarray,
+        B: np.ndarray,
+        tol: float = 1e-10
+) -> float:
     """
     Compute the shortest angular distance from point P to the arc segment between A and B on the sphere.
 
@@ -205,7 +210,8 @@ def arc_distance(P: np.ndarray, A: np.ndarray, B: np.ndarray) -> float:
         Arc start point (3D unit vector).
     B : np.ndarray
         Arc end point (3D unit vector).
-
+    tol : float, optional
+        Tolerance for degeneracy checks. Default is 1e-10.
     Returns
     -------
     float
@@ -218,19 +224,29 @@ def arc_distance(P: np.ndarray, A: np.ndarray, B: np.ndarray) -> float:
 
     n = np.cross(A, B)
     n_norm = np.linalg.norm(n)
-    if n_norm < 1e-10:
+    if n_norm < tol:  # degenerate edge  (A ≈ B)
         return min(np.arccos(np.clip(np.dot(P, A), -1.0, 1.0)),
                    np.arccos(np.clip(np.dot(P, B), -1.0, 1.0)))
     n /= n_norm
 
-    perp = np.cross(n, np.cross(P, n))
-    projected = perp / np.linalg.norm(perp)
+    # If P lies on the pole, distance is simply to the nearer endpoint
+    if abs(np.dot(P, n)) > 1.0 - tol:
+        return min(np.arccos(np.clip(np.dot(P, A), -1.0, 1.0)),
+                   np.arccos(np.clip(np.dot(P, B), -1.0, 1.0)))
 
+    perp = np.cross(n, np.cross(P, n))
+    perp_norm = np.linalg.norm(perp)
+    if perp_norm < tol:  # numerical safety net
+        return min(np.arccos(np.clip(np.dot(P, A), -1.0, 1.0)),
+                   np.arccos(np.clip(np.dot(P, B), -1.0, 1.0)))
+
+    projected = perp / perp_norm
     angle_total = np.arccos(np.clip(np.dot(A, B), -1.0, 1.0))
     angle_ap = np.arccos(np.clip(np.dot(A, projected), -1.0, 1.0))
     angle_bp = np.arccos(np.clip(np.dot(B, projected), -1.0, 1.0))
 
-    if np.abs((angle_ap + angle_bp) - angle_total) < 1e-8:
+    # Check if the projected foot lies between A and B along the great‑circle
+    if abs((angle_ap + angle_bp) - angle_total) < 1e-8:
         return np.arccos(np.clip(np.dot(P, projected), -1.0, 1.0))
     else:
         return min(np.arccos(np.clip(np.dot(P, A), -1.0, 1.0)),
@@ -278,8 +294,15 @@ def spherical_circumradius(points: np.ndarray, tol: float = 1e-10) -> float:
     norm_center = np.linalg.norm(center)
 
     if norm_center < tol:
-        # Degenerate triangle (e.g., colinear points)
-        return np.pi  # maximal uncertainty — half a great circle
+        # degeneracy: are all three vertices essentially the same?
+        pairwise_sep = [
+            np.arccos(np.clip(np.dot(u, v), -1.0, 1.0))
+            for u, v in [(A, B), (B, C), (C, A)]
+        ]
+        if max(pairwise_sep) < tol:  # coincident vertices
+            return 0.0
+        else:  # colinear but distinct
+            return np.pi
 
     center /= norm_center  # normalize to lie on the unit sphere
 
