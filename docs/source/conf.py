@@ -28,7 +28,7 @@ extensions = [
     'sphinx.ext.napoleon',
     'myst_parser',
     'sphinx.ext.intersphinx',
-    'sphinxcontrib.bibtex',
+    # 'sphinxcontrib.bibtex',
 ]
 
 source_suffix = {
