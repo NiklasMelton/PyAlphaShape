@@ -1,0 +1,51 @@
+name: Run Python Unit Tests
+
+on:
+  pull_request:
+    branches:
+      - main
+      - develop
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install poetry
+        poetry install --with dev --no-root
+
+    - name: Build wheel
+      run: |
+        poetry build
+        ls -l dist  # show the generated wheel
+
+    - name: Install wheel
+      run: |
+        poetry run pip install dist/*.whl
+
+    - name: Debug installed 'pyalphashape'
+      run: |
+        poetry run pip show -f pyalphashape
+
+    - name: Run tests
+      run: |
+        poetry run pytest unit_tests/ --maxfail=5 --disable-warnings -v --tb=short --junitxml=./test-results/pytest-report.xml  # Ensure JUnit XML report is generated
+
+    - name: Publish test results
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: pytest-results
+        path: ./test-results/pytest-report.xml
+        compression-level: 6  # Optional: Adjusts compression for artifact storage efficiency

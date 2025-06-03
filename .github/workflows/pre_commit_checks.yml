@@ -1,0 +1,58 @@
+name: Pre-commit checks
+
+on:
+  pull_request:
+  push:
+    branches:
+      - develop
+      - main
+
+jobs:
+  pre-commit:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Install Poetry
+        run: |
+          curl -sSL https://install.python-poetry.org | python3 -
+
+      - name: Install dependencies
+        run: |
+          poetry install --with dev
+
+      - name: Install pre-commit
+        run: |
+          poetry run pip install pre-commit
+
+      # Fetch the base branch for pull request or push event
+      - name: Set base branch
+        id: base_branch
+        run: |
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            echo "Base branch is: ${{ github.event.pull_request.base.ref }}"
+            echo "BASE_BRANCH=${{ github.event.pull_request.base.ref }}" >> $GITHUB_ENV
+          elif [[ "${{ github.event_name }}" == "push" ]]; then
+            # For push events, assume the current branch is the base (e.g., main or develop)
+            echo "BASE_BRANCH=${GITHUB_REF#refs/heads/}" >> $GITHUB_ENV
+            echo "Base branch is: ${GITHUB_REF#refs/heads/}"
+          fi
+
+      - name: Check out the base branch (if necessary)
+        run: |
+          git checkout $BASE_BRANCH || echo "Already on the base branch."
+
+      - name: Fetch the base branch
+        run: |
+          git fetch origin $BASE_BRANCH
+
+      - name: Run pre-commit on changed files
+        run: |
+          poetry run pre-commit run --from-ref origin/${BASE_BRANCH} --to-ref HEAD
