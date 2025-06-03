@@ -1,3 +1,38 @@
+"""
+Spherical cap geometry
+======================
+
+This module provides algorithms for working with spherical caps: the smallest
+(or largest empty) circular regions on the unit sphere that satisfy a given
+constraint.  Typical applications include coverage analysis, outlier detection,
+and bounding‑volume hierarchy construction for data on the sphere.
+
+Implemented tools
+-----------------
+- spherical_distance                 – great‑circle distance between two unit
+  vectors.
+- cap_through                        – minimal cap passing through up to three
+  support points.
+- is_in_cap                          – test whether a point lies inside a
+  specified cap.
+- welzl_spherical_cap                – Welzl’s recursive algorithm that yields
+  the smallest enclosing cap of a point set.
+- minimum_enclosing_spherical_cap    – convenience wrapper that shuffles the
+  input, then calls the Welzl routine.
+- maximum_empty_spherical_cap        – optimisation routine that finds the
+  largest cap containing none of the input points.
+
+Example
+-------
+```python
+center, rad = minimum_enclosing_spherical_cap(points_xyz)
+empty_c, empty_r = maximum_empty_spherical_cap(points_xyz)
+```
+
+All functions assume inputs are three‑dimensional unit vectors; use
+normalize from pyalphashape.sphere_utils to ensure this when required.
+"""
+
 import numpy as np
 from numpy.linalg import norm
 from typing import List, Tuple, Optional

@@ -1,3 +1,40 @@
+"""
+Graph Closure Tracker module
+============================
+
+This file defines :class:`GraphClosureTracker`, a dynamic Union–Find (disjoint‑set)
+structure for undirected graphs.  Unlike a fixed‑size Union–Find it grows
+automatically when new node indices appear, so it can be used in algorithms
+that discover vertices on the fly (for example while building α‑shapes, segmenting
+meshes, or tracking clusters in streaming data).
+
+Key capabilities
+----------------
+* **Dynamic resizing** – internal arrays expand transparently whenever
+  ``find`` or ``union`` encounters a larger node index.
+* **Rank‑based path compression** – near‑amortised‑constant time per operation.
+* **Component bookkeeping** – every call to ``union`` keeps an explicit set of
+  vertices per component, enabling easy iteration and size queries.
+* **Convenience helpers** – ``add_edge``, ``add_fully_connected_subgraph``,
+  ``is_connected``, and ``subgraph_is_already_connected`` cover common graph
+  operations without manual loops.
+
+Typical use
+-----------
+```python
+gct = GraphClosureTracker(num_nodes=5)
+gct.add_edge(0, 1)
+gct.add_edge(2, 3)
+assert not gct.is_connected(0, 2)
+gct.union(1, 2)           # merges {0,1} with {2,3}
+for comp in gct:
+    print(comp)           # prints each connected component as a set
+```
+Because the tracker is iterable and supports len(gct), it doubles as a
+lightweight graph‑partition object for algorithms that need to monitor the
+number or composition of connected components in real time.
+"""
+
 from typing import List
 class GraphClosureTracker:
     """

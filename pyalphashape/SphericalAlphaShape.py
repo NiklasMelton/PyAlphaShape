@@ -1,3 +1,50 @@
+"""
+Spherical alpha shapes
+======================
+
+This module implements :class:`SphericalAlphaShape`, an extension of the
+Euclidean α‑shape concept to data that lie on the surface of a unit sphere
+(e.g. geographic coordinates).  By adjusting the parameter α the boundary
+tightens or relaxes, capturing cavities and concavities that a convex hull
+misses while always respecting spherical geometry.
+
+Core features
+-------------
+- Converts input latitude–longitude pairs to 3‑D unit vectors and back.
+- Uses a spherical Delaunay triangulation and circumradius filter to select
+  simplices that satisfy the α criterion.
+- Supports *strict* and *relaxed* connectivity modes, plus optional hole
+  patching to guarantee a watertight surface.
+- Provides geometric queries:
+  * `contains_point` – point‑in‑shape test.
+  * `distance_to_surface` – shortest arc distance to the boundary.
+  * `triangle_faces`, `triangle_faces_latlon` – access to all retained
+    triangles in either coordinate system.
+  * `centroid` – area‑weighted centre of the shape.
+- Accepts incremental point insertion via `add_points`.
+
+Example
+-------
+```python
+import numpy as np
+from pyalphashape.SphericalAlphaShape import SphericalAlphaShape
+
+# Sample latitude–longitude data (degrees)
+coords = np.array([
+    [ 40.0, -105.0],
+    [ 41.0, -104.0],
+    [ 39.5, -103.5],
+    [ 40.5, -106.0],
+])
+
+sph_shape = SphericalAlphaShape(coords, alpha=2.0)
+inside = sph_shape.contains_point(np.array([40.3, -104.7]))
+dist   = sph_shape.distance_to_surface(np.array([42.0, -107.0]))
+```
+
+All computations use plain NumPy; no external geometry libraries are required.
+"""
+
 import numpy as np
 import itertools
 from collections import defaultdict

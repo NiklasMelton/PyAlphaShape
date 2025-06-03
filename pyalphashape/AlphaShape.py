@@ -1,3 +1,32 @@
+"""
+Alpha Shape module
+==================
+
+An *α‑shape* is a family of “concave hulls” that generalise the convex hull:
+for a point cloud in **d** dimensions, decreasing the parameter α gradually
+shrinks the hull so that cavities and concavities appear once their radius
+exceeds 1/α.  The resulting simplicial complex captures the true boundary of
+scattered data far more faithfully than a convex hull, making it useful for
+shape reconstruction, outlier removal, mesh generation, cluster delineation and
+morphological statistics.
+
+This module provides:
+
+* low‑level helpers ``circumcenter`` and ``circumradius`` for arbitrary‑dimensional
+  simplices;
+* an ``alphasimplices`` generator that streams Delaunay simplices with their
+  circumradii; and
+* the high‑level :class:`~pyalphashape.AlphaShape` class, which builds an
+  α‑shape in *any* dimension, supports strict/relaxed connectivity rules,
+  optional hole‑patching, incremental point insertion, inside/point‑to‑surface
+  queries, centroid computation, and access to perimeter vertices, edges and
+  faces.
+
+In practice you construct an α‑shape from an ``(N,d)`` array of points,
+tune α until the boundary is as tight as required, and then use the resulting
+object for geometric queries or for exporting a watertight simplicial mesh.
+"""
+
 import itertools
 import logging
 import math

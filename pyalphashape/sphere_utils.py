@@ -1,3 +1,39 @@
+"""
+Spherical geometry helpers
+==========================
+
+This utility file collects small, self‑contained functions for working with
+points on the unit sphere.  They cover common tasks such as converting between
+latitude–longitude and 3‑D unit vectors, projecting to a tangent plane,
+measuring distances and areas, checking spherical incircles, and computing the
+circumradius of a spherical triangle.
+
+Public functions
+----------------
+* normalize, unit_vector                     – return a vector with length 1.
+* latlon_to_unit_vectors, unit_vectors_to_latlon
+                                             – convert between geographic
+                                               coordinates and Cartesian unit
+                                               vectors.
+* spherical_triangle_area                    – area of a triangle on the sphere
+                                               (steradians).
+* spherical_incircle_check                   – test if a point lies within the
+                                               circumcircle of a spherical
+                                               triangle.
+* gnomonic_projection                        – map points to a 2‑D tangent
+                                               plane via gnomonic projection.
+* arc_distance                               – shortest angular distance from a
+                                               point to a great‑circle arc.
+* spherical_circumradius                     – angular radius of the
+                                               circumcircle of a spherical
+                                               triangle.
+
+These helpers are used throughout the alpha‑shape and spherical Delaunay
+modules but are written without external dependencies so they can be reused in
+other spherical‑geometry projects.
+"""
+
+
 import numpy as np
 def normalize(v: np.ndarray) -> np.ndarray:
     """

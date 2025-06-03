@@ -1,3 +1,42 @@
+"""
+Plotting utilities for alpha shapes
+===================================
+
+This module gathers helper routines that make it easy to visualise alpha
+shapes, spherical alpha shapes, and their Delaunay triangulations with either
+Matplotlib or Plotly.
+
+Functions included
+------------------
+* plot_polygon_edges           – draw the perimeter edges of a 2‑D or 3‑D
+  polygon on a Matplotlib axis.
+* interpolate_great_arc        – return evenly spaced points along the great
+  circle arc between two unit vectors.
+* plot_spherical_triangulation – show a spherical Delaunay triangulation,
+  optionally on an existing Matplotlib 3‑D axis or Plotly figure.
+* plot_alpha_shape             – render the perimeter of a 2‑D alpha shape.
+* generate_geodesic_fill_mesh  – create a watertight geodesic mesh that fills
+  the interior of a spherical alpha shape.
+* plot_spherical_alpha_shape   – high‑level wrapper that plots the boundary
+  (and optional filled surface) of a spherical alpha shape using the back end
+  of your choice.
+
+Each public function accepts styling arguments such as colour, line width,
+marker size, and transparency so the output can be integrated into larger
+figures or interactive dashboards without additional boiler‑plate.
+
+Typical usage
+-------------
+```python
+shape = AlphaShape(points, alpha=1.2)
+plot_alpha_shape(shape)
+
+sph_shape = SphericalAlphaShape(unit_vectors, alpha=2.0)
+plot_spherical_alpha_shape(sph_shape, line_color="red", fill=True)
+```
+"""
+
+
 import matplotlib.pyplot as plt
 from pyalphashape.AlphaShape import AlphaShape
 from pyalphashape.SphericalAlphaShape import SphericalAlphaShape

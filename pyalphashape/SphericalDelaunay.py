@@ -1,4 +1,48 @@
-# Re-import after environment reset
+"""
+Spherical Delaunay triangulation
+================================
+
+This class constructs a Delaunay triangulation on the unit sphere from
+latitude‑longitude data.  Two complementary strategies are available:
+
+* **Hemispheric method** – if all points lie on one hemisphere, points are
+  projected by the gnomonic map to a 2‑D tangent plane and triangulated with
+  SciPy’s planar Delaunay routine.
+* **Global method** – otherwise a 3‑D convex hull is built and its surface
+  facets are interpreted as spherical Delaunay triangles.  The equivalence
+  between convex‑hull facets of points on the sphere and their Delaunay
+  triangulation is detailed by Caroli et al.,
+  *Robust and Efficient Delaunay Triangulations of Points on or Close to a
+  Sphere*, Research Report RR‑7004, 2009.
+
+You can force either route with the ``assume_hemispheric`` flag; by default the
+constructor chooses automatically.
+
+Public API
+----------
+- ``simplices`` (property) or ``get_triangles`` — triangle indices.
+- ``get_triangle_coords`` — triangle vertices in (lat, lon) degrees.
+
+Example
+-------
+```python
+coords = np.array([
+    [37.8, -122.4],   # San Francisco
+    [34.0, -118.2],   # Los Angeles
+    [40.7,  -74.0],   # New York
+    [41.9,   12.5],   # Rome
+])
+
+tri = SphericalDelaunay(coords)
+print(tri)  # <SphericalDelaunay(method='global', n_triangles=...)>
+indices = tri.simplices
+```
+
+All triangles are outward‑facing and consistently wound (right‑hand rule),
+ready for downstream tasks such as spherical alpha‑shape construction.
+"""
+
+
 import numpy as np
 from scipy.spatial import ConvexHull, Delaunay
 from typing import Optional
