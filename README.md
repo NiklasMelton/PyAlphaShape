@@ -1,7 +1,7 @@
 # AlphaShape
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/NiklasMelton/PyAlphaShape/main/docs/_static/img/logo.png" alt="AlphaShape Logo" width="400"/>
+  <img src="https://raw.githubusercontent.com/NiklasMelton/PyAlphaShape/main/docs/_static/img/logo.png?raw=true" alt="AlphaShape Logo" width="400"/>
 </p>
 
 
