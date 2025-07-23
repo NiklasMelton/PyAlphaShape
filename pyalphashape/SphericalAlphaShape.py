@@ -48,7 +48,7 @@ All computations use plain NumPy; no external geometry libraries are required.
 import numpy as np
 import itertools
 from collections import defaultdict
-from typing import Literal, Set, Tuple, List, Optional
+from typing import Literal, Set, Tuple, List, Optional, Union, Any, Dict
 from pyalphashape.SphericalDelaunay import SphericalDelaunay
 from pyalphashape.sphere_utils import (
     latlon_to_unit_vectors,
@@ -62,21 +62,7 @@ from pyalphashape.GraphClosure import GraphClosureTracker
 
 class SphericalAlphaShape:
     """Compute the α-shape (concave hull) of points defined on the surface of a unit
-    sphere.
-
-    Parameters
-    ----------
-    points : np.ndarray
-        An (N, 2) array of latitude and longitude coordinates in degrees.
-    alpha : float, optional
-        The α parameter controlling shape detail. Smaller values yield tighter shapes.
-    connectivity : {"strict", "relaxed"}, optional
-        Rule for keeping connected components during filtering.
-    ensure_closure : bool, default True
-        If True, triangles that are otherwise too large but are fully enclosed by
-        accepted triangles will be included. This prevents holes
-
-    """
+    sphere."""
 
     def __init__(
         self,
@@ -85,6 +71,23 @@ class SphericalAlphaShape:
         connectivity: Literal["strict", "relaxed"] = "strict",
         ensure_closure: bool = True,
     ):
+        """Compute the α-shape (concave hull) of points defined on the surface of a unit
+        sphere.
+
+        Parameters
+        ----------
+        points : np.ndarray
+            An (N, 2) array of latitude and longitude coordinates in degrees.
+        alpha : float, optional
+            The α parameter controlling shape detail. Smaller values yield tighter
+            shapes.
+        connectivity : {"strict", "relaxed"}, optional
+            Rule for keeping connected components during filtering.
+        ensure_closure : bool, default True
+            If True, triangles that are otherwise too large but are fully enclosed by
+            accepted triangles will be included. This prevents holes
+
+        """
         self._dim = points.shape[1]
         if self._dim < 2:
             raise ValueError("dimension must be ≥ 2")
@@ -100,8 +103,8 @@ class SphericalAlphaShape:
 
         self.simplices: Set[Tuple[int, ...]] = set()
         self.perimeter_edges: List[Tuple[np.ndarray, np.ndarray]] = []
-        self.perimeter_points: np.ndarray | None = None
-        self.perimeter_points_latlon: np.ndarray | None = None
+        self.perimeter_points: Union[np.ndarray, None] = None
+        self.perimeter_points_latlon: Union[np.ndarray, None] = None
         self.GCT = GraphClosureTracker(len(points))
 
         # build once
@@ -134,7 +137,7 @@ class SphericalAlphaShape:
 
         """
         # ── 0. quick outs ──────────────────────────────────────────────────
-        if len(self.perimeter_points) == 0:
+        if self.perimeter_points is None or len(self.perimeter_points) == 0:
             return False
 
         P = latlon_to_unit_vectors(pt_latlon[None, :])[0]  # unit vector
@@ -193,7 +196,7 @@ class SphericalAlphaShape:
             pts = np.vstack([self.perimeter_points_latlon, new_pts])
         else:
             pts = np.vstack([self.points_latlon, new_pts])
-        self.__init__(
+        self.__init__(  # type: ignore[misc]
             pts,
             alpha=self.alpha,
             connectivity=self.connectivity,
@@ -216,13 +219,13 @@ class SphericalAlphaShape:
         facets: Set[Tuple[int, ...]] = set()
         for s in self.simplices:
             for f in itertools.combinations(s, 2):
-                f = tuple(sorted(f))
-                if f in facets:
-                    facets.remove(f)
+                f_: tuple[int, ...] = tuple(sorted(f))
+                if f_ in facets:
+                    facets.remove(f_)
                 else:
-                    facets.add(f)
+                    facets.add(f_)
         # cache
-        self._boundary_facets = facets
+        self._boundary_facets: Set[Tuple[int, ...]] = facets
         return facets
 
     def distance_to_surface(self, point: np.ndarray) -> float:
@@ -244,6 +247,9 @@ class SphericalAlphaShape:
 
         if point.shape[-1] != 2:
             raise ValueError("Input point must be (lat, lon) in degrees")
+
+        if self.perimeter_points is None:
+            raise ValueError("Cannot find distance to surface with no perimeter points")
 
         if self.contains_point(point):
             return 0.0
@@ -330,15 +336,15 @@ class SphericalAlphaShape:
 
             # Identify the largest connected component
             comp_sizes = {root: len(nodes) for root, nodes in gct.components.items()}
-            main_root = max(comp_sizes, key=comp_sizes.get)
+            main_root = max(comp_sizes, key=lambda k: comp_sizes[k])
             main_verts = gct.components[main_root]
 
             # Build edge-to-triangle map
             edge_to_triangles = defaultdict(list)
             for simp in all_passed:
                 for edge in itertools.combinations(simp, 2):
-                    edge = tuple(sorted(edge))
-                    edge_to_triangles[edge].append(simp)
+                    edge_: Tuple[Any, ...] = tuple(sorted(edge))
+                    edge_to_triangles[edge_].append(simp)
 
             # Keep only triangles that:
             # (a) have all vertices in the main component, and
@@ -375,12 +381,12 @@ class SphericalAlphaShape:
         self.simplices = set(kept)
         self.GCT = GraphClosureTracker(n)  # final tracker
 
-        edge_counts = defaultdict(int)
+        edge_counts: Dict[Tuple[Any, ...], int] = defaultdict(int)
         for s in self.simplices:
             self.GCT.add_fully_connected_subgraph(list(s))
             for edge in itertools.combinations(s, 2):  # triangle edges
-                edge = tuple(sorted(edge))
-                edge_counts[edge] += 1
+                edge_ = tuple(sorted(edge))
+                edge_counts[edge_] += 1
 
         # ---------- 4.  store perimeter ----------------------------------
         # Only edges that appear once are on the perimeter
@@ -404,7 +410,8 @@ class SphericalAlphaShape:
             True if no perimeter has been constructed, False otherwise.
 
         """
-
+        if self.perimeter_points is None:
+            return True
         return len(self.perimeter_points) == 0
 
     @property
