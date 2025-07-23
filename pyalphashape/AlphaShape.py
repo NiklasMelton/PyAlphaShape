@@ -20,7 +20,7 @@ This module provides:
   α‑shape in *any* dimension, supports strict/relaxed connectivity rules,
   optional hole‑patching, incremental point insertion, inside/point‑to‑surface
   queries, centroid computation, and access to perimeter vertices, edges and
-  faces.
+  facets.
 
 In practice you construct an α‑shape from an ``(N,d)`` array of points,
 tune α until the boundary is as tight as required, and then use the resulting
@@ -155,7 +155,7 @@ def point_to_simplex_distance(
     if np.all(bary >= -tol):
         return np.linalg.norm(p - proj)
 
-    # otherwise, recurse on all k faces (remove one vertex at a time)
+    # otherwise, recurse on all k facets (remove one vertex at a time)
     return min(
         point_to_simplex_distance(p, np.delete(simplex, i, axis=0), tol)
         for i in range(k + 1)
@@ -301,51 +301,46 @@ class AlphaShape:
             ensure_closure=self.ensure_closure,
         )
 
-    def _get_boundary_faces(self) -> Set[Tuple[int, ...]]:
-        """Identify and return the boundary (d-1)-faces of the alpha shape.
-
-        Returns
-        -------
-        Set[Tuple[int, ...]]
-            A set of index tuples representing the boundary faces.
-
-        """
-
-        if hasattr(self, "_boundary_faces"):
-            return self._boundary_faces
+    def _get_boundary_facets(self) -> Set[Tuple[int, ...]]:
+        """Identify and return the boundary (d-1)-facets of the alpha shape, and cache
+        per-facet filter data for fast distance queries."""
+        if hasattr(self, "_boundary_facets"):
+            return self._boundary_facets
 
         dim = self._dim
-        faces: Set[Tuple[int, ...]] = set()
+        facets: Set[Tuple[int, ...]] = set()
         for s in self.simplices:
             for f in itertools.combinations(s, dim):
                 f = tuple(sorted(f))
-                if f in faces:
-                    faces.remove(f)
+                if f in facets:
+                    facets.remove(f)
                 else:
-                    faces.add(f)
-        # cache
-        self._boundary_faces: Set[Tuple[int, ...]] = faces
-        return faces
+                    facets.add(f)
+        # cache boundary facets
+        self._boundary_facets: Set[Tuple[int, ...]] = facets
+
+        # cache filter data: (normal, base_point, sphere_center, sphere_radius)
+        self._facet_filter_data: Dict[
+            Tuple[int, ...], Tuple[np.ndarray, np.ndarray, np.ndarray, float]
+        ] = {}
+        for facet in facets:
+            verts = self.points[list(facet)]  # (d, d)
+            base = verts[0]
+            A = (verts[1:] - base).T  # (d, d-1)
+            # unit normal via nullspace of A^T
+            _, _, Vt = np.linalg.svd(A.T)
+            normal = Vt[-1]
+            normal /= np.linalg.norm(normal)
+            # bounding sphere: centroid + max vertex distance
+            center = verts.mean(axis=0)
+            radius = np.max(np.linalg.norm(verts - center, axis=1))
+            self._facet_filter_data[facet] = (normal, base, center, radius)
+
+        return facets
 
     def distance_to_surface(self, point: np.ndarray, tol: float = 1e-9) -> float:
         """Compute the shortest Euclidean distance from a point to the alpha shape
-        surface.
-
-        Parameters
-        ----------
-        point : np.ndarray
-            A point of shape (d,) in the same ambient space as the alpha shape.
-        tol : float, optional
-            Tolerance for barycentric coordinate test. Default is 1e-9.
-
-        Returns
-        -------
-        float
-            Distance from the point to the alpha shape surface. Returns 0 if inside
-            or on surface.
-
-        """
-
+        surface, using plane & sphere filters for speed."""
         p = np.asarray(point, dtype=float)
         if p.shape[-1] != self._dim:
             raise ValueError("point dimensionality mismatch")
@@ -354,20 +349,27 @@ class AlphaShape:
         if self.contains_point(p):
             return 0.0
 
-        # 2. gather boundary faces and vertices
-        faces = self._get_boundary_faces()
-        if not faces:
-            # degenerate case (e.g. only D input points)
-            # fall back to nearest perimeter vertex
-            return np.min(np.linalg.norm(self.perimeter_points - p, axis=1))
+        # 2. boundary facets
+        facets = self._get_boundary_facets()
+        if not facets:
+            return float(np.min(np.linalg.norm(self.perimeter_points - p, axis=1)))
 
-        dists = []
-        for face in faces:
-            verts = self.points[list(face)]
-            dists.append(point_to_simplex_distance(p, verts, tol))
-        return min(dists)
+        best = np.inf
+        for facet in facets:
+            normal, base, center, radius = self._facet_filter_data[facet]
+            # plane-distance filter
+            if abs(np.dot(p - base, normal)) >= best:
+                continue
+            # bounding-sphere filter
+            if np.linalg.norm(p - center) - radius >= best:
+                continue
+            # exact distance on this facet
+            verts = self.points[list(facet)]
+            d = point_to_simplex_distance(p, verts, tol)
+            if d < best:
+                best = d
 
-        return float(min(dists))
+        return float(best)
 
     def _build_batch(self) -> None:
         """Construct the alpha shape using Delaunay triangulation and filtering by
@@ -488,8 +490,8 @@ class AlphaShape:
         return len(self.perimeter_points) == 0
 
     @property
-    def triangle_faces(self) -> List[np.ndarray]:
-        """Get the triangle faces (simplices) that make up the alpha shape.
+    def triangle_facets(self) -> List[np.ndarray]:
+        """Get the triangle facets (simplices) that make up the alpha shape.
 
         Returns
         -------
