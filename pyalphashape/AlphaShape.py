@@ -114,6 +114,32 @@ def alphasimplices(points: np.ndarray) -> Tuple[np.ndarray, float, np.ndarray]:
                          'lying in an N-1 space.')
 
 
+def point_to_simplex_distance(p, simplex, tol=1e-9):
+    k = len(simplex) - 1
+    if k == 0:
+        # 0-simplex: just a point
+        return np.linalg.norm(p - simplex[0])
+
+    base = simplex[0]
+    A = (simplex[1:] - base).T         # shape (d, k)
+    λ, *_ = np.linalg.lstsq(A, p - base, rcond=None)
+    proj = base + A @ λ
+    bary = np.empty(k+1)
+    bary[0] = 1 - λ.sum()
+    bary[1:] = λ
+
+    # inside (or on) the simplex?
+    if np.all(bary >= -tol):
+        return np.linalg.norm(p - proj)
+
+    # otherwise, recurse on all k faces (remove one vertex at a time)
+    return min(
+        point_to_simplex_distance(p, np.delete(simplex, i, axis=0), tol)
+        for i in range(k+1)
+    )
+
+
+
 class AlphaShape:
     """
     Compute the α-shape (concave hull) of a point cloud in arbitrary dimensions.
@@ -301,30 +327,15 @@ class AlphaShape:
         # 2. gather boundary faces and vertices
         faces = self._get_boundary_faces()
         if not faces:
-            # degenerate case (e.g. only 1–2 input points)
+            # degenerate case (e.g. only D input points)
             # fall back to nearest perimeter vertex
             return np.min(np.linalg.norm(self.perimeter_points - p, axis=1))
 
         dists = []
-
-        for f in faces:
-            verts = self.points[list(f)]  # shape (d, d)
-            base = verts[0]
-            A = verts[1:] - base  # (d‑1, d)
-
-            # orthogonal projection of p onto the face’s affine span
-            # Solve A x = (p - base)  →  least‑squares because A is tall
-            x_hat, *_ = np.linalg.lstsq(A.T, (p - base), rcond=None)
-            proj = base + A.T @ x_hat
-
-            # barycentric coordinates to test if proj is inside the simplex
-            # coords = [1 - sum(x_hat), *x_hat]
-            bary = np.concatenate(([1.0 - x_hat.sum()], x_hat))
-            if np.all(bary >= -tol):  # inside (or on) the face
-                dists.append(np.linalg.norm(p - proj))
-            else:
-                # outside → distance to nearest vertex of this face
-                dists.extend(np.linalg.norm(verts - p, axis=1))
+        for face in boundary_faces:
+            verts = self.points[list(face)]
+            dists.append(point_to_simplex_distance(p, verts, tol))
+        return min(dists)
 
         return float(min(dists))
 
