@@ -47,14 +47,14 @@ from mpl_toolkits.mplot3d import Axes3D  # noqa
 import numpy as np
 import plotly.graph_objects as go
 
+
 def plot_polygon_edges(
     edges: np.ndarray,
     ax: Axes,
     line_color: str = "b",
     line_width: float = 1.0,
 ):
-    """
-    Plot a set of polygon edges on a 2D or 3D Matplotlib axis.
+    """Plot a set of polygon edges on a 2D or 3D Matplotlib axis.
 
     Parameters
     ----------
@@ -67,6 +67,7 @@ def plot_polygon_edges(
         Color of the edges, by default 'b'.
     line_width : float, optional
         Width of the edge lines, by default 1.0.
+
     """
     for p1, p2 in edges:
         x = [p1[0], p2[0]]
@@ -91,9 +92,11 @@ def plot_polygon_edges(
             )
 
 
-def interpolate_great_arc(A: np.ndarray, B: np.ndarray, num_points: int = 100) -> np.ndarray:
-    """
-    Compute evenly spaced points along the great arc connecting two points on the unit sphere.
+def interpolate_great_arc(
+    A: np.ndarray, B: np.ndarray, num_points: int = 100
+) -> np.ndarray:
+    """Compute evenly spaced points along the great arc connecting two points on the
+    unit sphere.
 
     Parameters
     ----------
@@ -108,6 +111,7 @@ def interpolate_great_arc(A: np.ndarray, B: np.ndarray, num_points: int = 100) -
     -------
     np.ndarray
         Array of shape (num_points, 3) containing interpolated points on the unit sphere.
+
     """
 
     A = A / np.linalg.norm(A)
@@ -120,8 +124,9 @@ def interpolate_great_arc(A: np.ndarray, B: np.ndarray, num_points: int = 100) -
 
     sin_theta = np.sin(theta)
     t_vals = np.linspace(0, 1, num_points)
-    arc_points = (np.sin((1 - t_vals) * theta)[:, None] * A +
-                  np.sin(t_vals * theta)[:, None] * B) / sin_theta
+    arc_points = (
+        np.sin((1 - t_vals) * theta)[:, None] * A + np.sin(t_vals * theta)[:, None] * B
+    ) / sin_theta
     return arc_points
 
 
@@ -135,10 +140,9 @@ def plot_spherical_triangulation(
     marker_symbol: Optional[str] = "circle",
     line_width: float = 1.5,
     line_color: Any = "blue",
-    line_style: str = "-"
+    line_style: str = "-",
 ):
-    """
-    Visualize a spherical Delaunay triangulation using either Matplotlib or Plotly.
+    """Visualize a spherical Delaunay triangulation using either Matplotlib or Plotly.
 
     Parameters
     ----------
@@ -167,6 +171,7 @@ def plot_spherical_triangulation(
     -------
     plotly.graph_objects.Figure or matplotlib.axes.Axes
         The figure or axis object used for plotting.
+
     """
 
     if ax is not None:
@@ -175,7 +180,7 @@ def plot_spherical_triangulation(
         ax.grid(False)
 
         # Sphere surface
-        u, v = np.mgrid[0:2*np.pi:60j, 0:np.pi:30j]
+        u, v = np.mgrid[0 : 2 * np.pi : 60j, 0 : np.pi : 30j]
         xs = np.cos(u) * np.sin(v)
         ys = np.sin(u) * np.sin(v)
         zs = np.cos(v)
@@ -183,7 +188,9 @@ def plot_spherical_triangulation(
 
         # Points
         pts = triangulation.points_xyz
-        ax.scatter(pts[:, 0], pts[:, 1], pts[:, 2], color=marker_color, s=marker_size**2)
+        ax.scatter(
+            pts[:, 0], pts[:, 1], pts[:, 2], color=marker_color, s=marker_size**2
+        )
 
         # Arcs
         for tri in triangulation.triangles:
@@ -192,15 +199,26 @@ def plot_spherical_triangulation(
                 A = pts[tri[indices[i]]]
                 B = pts[tri[indices[i + 1]]]
                 arc_pts = interpolate_great_arc(A, B)
-                ax.plot(arc_pts[:, 0], arc_pts[:, 1], arc_pts[:, 2],
-                        color=line_color, linewidth=line_width, linestyle=line_style)
+                ax.plot(
+                    arc_pts[:, 0],
+                    arc_pts[:, 1],
+                    arc_pts[:, 2],
+                    color=line_color,
+                    linewidth=line_width,
+                    linestyle=line_style,
+                )
 
         return ax
 
     return _plot_spherical_triangulation_plotly(
-        triangulation, title, fig,
-        marker_size, marker_color, marker_symbol,
-        line_width, line_color
+        triangulation,
+        title,
+        fig,
+        marker_size,
+        marker_color,
+        marker_symbol,
+        line_width,
+        line_color,
     )
 
 
@@ -212,10 +230,9 @@ def _plot_spherical_triangulation_plotly(
     marker_color: Any,
     marker_symbol: Optional[str],
     line_width: float,
-    line_color: Any
+    line_color: Any,
 ):
-    """
-    Internal helper to render a spherical triangulation using Plotly.
+    """Internal helper to render a spherical triangulation using Plotly.
 
     Parameters
     ----------
@@ -240,30 +257,39 @@ def _plot_spherical_triangulation_plotly(
     -------
     plotly.graph_objects.Figure
         The updated or newly created Plotly figure.
+
     """
 
     if fig is None:
         fig = go.Figure()
 
-        u, v = np.mgrid[0:2*np.pi:60j, 0:np.pi:30j]
+        u, v = np.mgrid[0 : 2 * np.pi : 60j, 0 : np.pi : 30j]
         xs = np.cos(u) * np.sin(v)
         ys = np.sin(u) * np.sin(v)
         zs = np.cos(v)
-        fig.add_trace(go.Surface(
-            x=xs, y=ys, z=zs,
-            opacity=0.15,
-            showscale=False,
-            colorscale='Greys',
-            name='Sphere'
-        ))
+        fig.add_trace(
+            go.Surface(
+                x=xs,
+                y=ys,
+                z=zs,
+                opacity=0.15,
+                showscale=False,
+                colorscale="Greys",
+                name="Sphere",
+            )
+        )
 
     pts = triangulation.perimeter_points
-    fig.add_trace(go.Scatter3d(
-        x=pts[:, 0], y=pts[:, 1], z=pts[:, 2],
-        mode='markers',
-        marker=dict(size=marker_size, color=marker_color, symbol=marker_symbol),
-        name='Points'
-    ))
+    fig.add_trace(
+        go.Scatter3d(
+            x=pts[:, 0],
+            y=pts[:, 1],
+            z=pts[:, 2],
+            mode="markers",
+            marker=dict(size=marker_size, color=marker_color, symbol=marker_symbol),
+            name="Points",
+        )
+    )
 
     for tri in triangulation.triangles:
         indices = [0, 1, 2, 0]
@@ -271,20 +297,26 @@ def _plot_spherical_triangulation_plotly(
             A = pts[tri[indices[i]]]
             B = pts[tri[indices[i + 1]]]
             arc_pts = interpolate_great_arc(A, B)
-            fig.add_trace(go.Scatter3d(
-                x=arc_pts[:, 0], y=arc_pts[:, 1], z=arc_pts[:, 2],
-                mode='lines',
-                line=dict(color=line_color, width=line_width),
-                showlegend=False
-            ))
+            fig.add_trace(
+                go.Scatter3d(
+                    x=arc_pts[:, 0],
+                    y=arc_pts[:, 1],
+                    z=arc_pts[:, 2],
+                    mode="lines",
+                    line=dict(color=line_color, width=line_width),
+                    showlegend=False,
+                )
+            )
 
     fig.update_layout(
         title=title,
-        scene=dict(xaxis=dict(showgrid=False),
-                   yaxis=dict(showgrid=False),
-                   zaxis=dict(showgrid=False),
-                   aspectmode='data'),
-        margin=dict(l=0, r=0, b=0, t=30)
+        scene=dict(
+            xaxis=dict(showgrid=False),
+            yaxis=dict(showgrid=False),
+            zaxis=dict(showgrid=False),
+            aspectmode="data",
+        ),
+        margin=dict(l=0, r=0, b=0, t=30),
     )
     return fig
 
@@ -293,10 +325,9 @@ def plot_alpha_shape(
     shape: AlphaShape,
     ax: Optional[Axes] = None,
     line_width: int = 1,
-    line_color: Any = "r"
+    line_color: Any = "r",
 ):
-    """
-    Plot a 2D alpha shape perimeter using Matplotlib.
+    """Plot a 2D alpha shape perimeter using Matplotlib.
 
     Parameters
     ----------
@@ -308,32 +339,31 @@ def plot_alpha_shape(
         Width of the perimeter lines, by default 1.
     line_color : Any, optional
         Color of the perimeter lines, by default 'r'.
+
     """
 
     edges = [(e1, e2) for e1, e2 in shape.perimeter_edges]
 
     if ax is None:
         fig, ax = plt.subplots()
-    plot_polygon_edges(
-        edges, ax, line_width=line_width, line_color=line_color
-    )
+    plot_polygon_edges(edges, ax, line_width=line_width, line_color=line_color)
 
 
 import numpy as np
 from typing import Tuple, Dict, List
 
+
 def generate_geodesic_fill_mesh(
-    shape: 'SphericalAlphaShape',
-    resolution: int = 10
+    shape: "SphericalAlphaShape", resolution: int = 10
 ) -> Tuple[np.ndarray, np.ndarray]:
-    """
-    Generate a unified, watertight geodesic mesh to fill the interior of a spherical alpha shape.
-    All triangle interiors are subdivided and projected back to the sphere to prevent gaps.
+    """Generate a unified, watertight geodesic mesh to fill the interior of a spherical
+    alpha shape. All triangle interiors are subdivided and projected back to the sphere
+    to prevent gaps.
 
     Parameters
     ----------
     shape : SphericalAlphaShape
-        The alpha shape instance with triangle faces.
+        The alpha shape instance with triangle facets.
     resolution : int, optional
         Number of subdivisions per triangle edge. Higher means smoother (default: 10).
 
@@ -341,8 +371,9 @@ def generate_geodesic_fill_mesh(
     -------
     vertices : np.ndarray
         Array of shape (N, 3) of points on the unit sphere.
-    faces : np.ndarray
+    facets : np.ndarray
         Array of shape (M, 3) of triangle indices into `vertices`.
+
     """
 
     def slerp(a: np.ndarray, b: np.ndarray, t: float) -> np.ndarray:
@@ -355,7 +386,7 @@ def generate_geodesic_fill_mesh(
 
     vertices: List[np.ndarray] = []
     vertex_cache: Dict[Tuple[float, float, float], int] = {}
-    faces: List[Tuple[int, int, int]] = []
+    facets: List[Tuple[int, int, int]] = []
 
     def add_vertex(v: np.ndarray) -> int:
         v /= np.linalg.norm(v)
@@ -365,7 +396,7 @@ def generate_geodesic_fill_mesh(
             vertices.append(v)
         return vertex_cache[key]
 
-    for triangle in shape.triangle_faces:
+    for triangle in shape.triangle_facets:
         A, B, C = triangle
         index_grid = []
 
@@ -386,12 +417,12 @@ def generate_geodesic_fill_mesh(
                 v0 = index_grid[i][j]
                 v1 = index_grid[i + 1][j]
                 v2 = index_grid[i + 1][j + 1]
-                faces.append((v0, v1, v2))
+                facets.append((v0, v1, v2))
                 if j < i:
                     v3 = index_grid[i][j + 1]
-                    faces.append((v0, v2, v3))
+                    facets.append((v0, v2, v3))
 
-    return np.array(vertices), np.array(faces)
+    return np.array(vertices), np.array(facets)
 
 
 def plot_spherical_alpha_shape(
@@ -407,10 +438,10 @@ def plot_spherical_alpha_shape(
     ax: Optional[Axes] = None,
     fill: bool = True,
     fill_color: Any = "skyblue",
-    fill_alpha: float = 0.4
+    fill_alpha: float = 0.4,
 ):
-    """
-    Visualize the perimeter of a spherical alpha shape using either Matplotlib or Plotly.
+    """Visualize the perimeter of a spherical alpha shape using either Matplotlib or
+    Plotly.
 
     Parameters
     ----------
@@ -445,6 +476,7 @@ def plot_spherical_alpha_shape(
     -------
     plotly.graph_objects.Figure or matplotlib.axes.Axes
         The figure or axis used for plotting.
+
     """
 
     if ax is not None:
@@ -453,7 +485,7 @@ def plot_spherical_alpha_shape(
         ax.grid(False)
 
         # Sphere surface
-        u, v = np.mgrid[0:2*np.pi:60j, 0:np.pi:30j]
+        u, v = np.mgrid[0 : 2 * np.pi : 60j, 0 : np.pi : 30j]
         xs = np.cos(u) * np.sin(v)
         ys = np.sin(u) * np.sin(v)
         zs = np.cos(v)
@@ -463,26 +495,47 @@ def plot_spherical_alpha_shape(
         if fill:
             verts, tris = generate_geodesic_fill_mesh(shape, resolution=20)
             ax.plot_trisurf(
-                verts[:, 0], verts[:, 1], verts[:, 2],
+                verts[:, 0],
+                verts[:, 1],
+                verts[:, 2],
                 triangles=tris,
-                color=fill_color, alpha=fill_alpha, edgecolor="none"
+                color=fill_color,
+                alpha=fill_alpha,
+                edgecolor="none",
             )
 
         # Arcs
         for A, B in shape.perimeter_edges:
             arc_pts = interpolate_great_arc(A, B)
-            ax.plot(arc_pts[:, 0], arc_pts[:, 1], arc_pts[:, 2],
-                    color=line_color, linewidth=line_width, linestyle=line_style)
+            ax.plot(
+                arc_pts[:, 0],
+                arc_pts[:, 1],
+                arc_pts[:, 2],
+                color=line_color,
+                linewidth=line_width,
+                linestyle=line_style,
+            )
 
         # Points
         pts = shape.perimeter_points
-        ax.scatter(pts[:, 0], pts[:, 1], pts[:, 2], color=marker_color, s=marker_size**2)
+        ax.scatter(
+            pts[:, 0], pts[:, 1], pts[:, 2], color=marker_color, s=marker_size**2
+        )
 
         return ax
 
     return _plot_spherical_alpha_shape_plotly(
-        shape, line_width, line_color, marker_size, marker_color, marker_symbol,
-        title, fig, fill, fill_color, fill_alpha
+        shape,
+        line_width,
+        line_color,
+        marker_size,
+        marker_color,
+        marker_symbol,
+        title,
+        fig,
+        fill,
+        fill_color,
+        fill_alpha,
     )
 
 
@@ -497,10 +550,9 @@ def _plot_spherical_alpha_shape_plotly(
     fig: Optional[go.Figure],
     fill: bool,
     fill_color: Any,
-    fill_alpha: float
+    fill_alpha: float,
 ):
-    """
-    Internal helper to render a spherical alpha shape using Plotly in 3D.
+    """Internal helper to render a spherical alpha shape using Plotly in 3D.
 
     Parameters
     ----------
@@ -531,56 +583,77 @@ def _plot_spherical_alpha_shape_plotly(
     -------
     plotly.graph_objects.Figure
         The Plotly figure object containing the spherical alpha shape.
+
     """
 
     if fig is None:
         fig = go.Figure()
-        u, v = np.mgrid[0:2*np.pi:60j, 0:np.pi:30j]
+        u, v = np.mgrid[0 : 2 * np.pi : 60j, 0 : np.pi : 30j]
         xs = np.cos(u) * np.sin(v)
         ys = np.sin(u) * np.sin(v)
         zs = np.cos(v)
-        fig.add_trace(go.Surface(
-            x=xs, y=ys, z=zs,
-            opacity=0.15,
-            showscale=False,
-            colorscale='Greys',
-            name='Sphere'
-        ))
+        fig.add_trace(
+            go.Surface(
+                x=xs,
+                y=ys,
+                z=zs,
+                opacity=0.15,
+                showscale=False,
+                colorscale="Greys",
+                name="Sphere",
+            )
+        )
 
     # Optional filled triangles
     if fill:
         verts, tris = generate_geodesic_fill_mesh(shape, resolution=20)
-        fig.add_trace(go.Mesh3d(
-            x=verts[:, 0], y=verts[:, 1], z=verts[:, 2],
-            i=tris[:, 0], j=tris[:, 1], k=tris[:, 2],
-            color=fill_color,
-            opacity=fill_alpha,
-            showscale=False
-        ))
+        fig.add_trace(
+            go.Mesh3d(
+                x=verts[:, 0],
+                y=verts[:, 1],
+                z=verts[:, 2],
+                i=tris[:, 0],
+                j=tris[:, 1],
+                k=tris[:, 2],
+                color=fill_color,
+                opacity=fill_alpha,
+                showscale=False,
+            )
+        )
 
     for A, B in shape.perimeter_edges:
         arc_pts = interpolate_great_arc(A, B)
-        fig.add_trace(go.Scatter3d(
-            x=arc_pts[:, 0], y=arc_pts[:, 1], z=arc_pts[:, 2],
-            mode='lines',
-            line=dict(color=line_color, width=line_width),
-            showlegend=False
-        ))
+        fig.add_trace(
+            go.Scatter3d(
+                x=arc_pts[:, 0],
+                y=arc_pts[:, 1],
+                z=arc_pts[:, 2],
+                mode="lines",
+                line=dict(color=line_color, width=line_width),
+                showlegend=False,
+            )
+        )
 
     pts = shape.perimeter_points
-    fig.add_trace(go.Scatter3d(
-        x=pts[:, 0], y=pts[:, 1], z=pts[:, 2],
-        mode='markers',
-        marker=dict(size=marker_size, color=marker_color, symbol=marker_symbol),
-        name="Points"
-    ))
+    fig.add_trace(
+        go.Scatter3d(
+            x=pts[:, 0],
+            y=pts[:, 1],
+            z=pts[:, 2],
+            mode="markers",
+            marker=dict(size=marker_size, color=marker_color, symbol=marker_symbol),
+            name="Points",
+        )
+    )
 
     fig.update_layout(
         title=title,
-        scene=dict(xaxis=dict(showgrid=False),
-                   yaxis=dict(showgrid=False),
-                   zaxis=dict(showgrid=False),
-                   aspectmode='data'),
-        margin=dict(l=0, r=0, b=0, t=30)
+        scene=dict(
+            xaxis=dict(showgrid=False),
+            yaxis=dict(showgrid=False),
+            zaxis=dict(showgrid=False),
+            aspectmode="data",
+        ),
+        margin=dict(l=0, r=0, b=0, t=30),
     )
     return fig

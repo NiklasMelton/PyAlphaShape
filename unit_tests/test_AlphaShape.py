@@ -94,12 +94,12 @@ def test_add_points_grows_shape():
     assert n_perim_after > n_perim_before
 
 
-def test_get_boundary_faces_returns_faces():
+def test_get_boundary_facets_returns_facets():
     points = np.random.rand(10, 3)
     shape = AlphaShape(points, alpha=1.0)
-    faces = shape._get_boundary_faces()
-    assert isinstance(faces, set)
-    for f in faces:
+    facets = shape._get_boundary_facets()
+    assert isinstance(facets, set)
+    for f in facets:
         assert isinstance(f, tuple)
         assert len(f) == shape._dim
 

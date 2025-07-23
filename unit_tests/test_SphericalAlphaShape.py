@@ -56,7 +56,7 @@ def test_add_points_behavior():
     assert n_after > n_before
 
 
-def test_triangle_faces_properties():
+def test_triangle_facets_properties():
     points = np.array([
         [0, 0],
         [0, 90],
@@ -65,11 +65,11 @@ def test_triangle_faces_properties():
         [15, 60]
     ])
     shape = SphericalAlphaShape(points, alpha=1.0)
-    faces_vec = shape.triangle_faces
-    faces_ll = shape.triangle_faces_latlon
-    for face in faces_vec:
+    facets_vec = shape.triangle_facets
+    facets_ll = shape.triangle_facets_latlon
+    for face in facets_vec:
         assert face.shape == (3, 3)  # 3 unit vectors
-    for face in faces_ll:
+    for face in facets_ll:
         assert face.shape == (3, 2)  # 3 lat/lon pairs
 
 
@@ -94,7 +94,7 @@ def test_degenerate_shape_returns_nan_centroid():
     assert np.isnan(centroid).all()
 
 
-def test_get_boundary_faces_valid_format():
+def test_get_boundary_facets_valid_format():
     points = np.array([
         [0, 0],
         [0, 90],
@@ -103,7 +103,7 @@ def test_get_boundary_faces_valid_format():
         [15, 60]
     ])
     shape = SphericalAlphaShape(points, alpha=1.0)
-    faces = shape._get_boundary_faces()
-    for f in faces:
+    facets = shape._get_boundary_facets()
+    for f in facets:
         assert isinstance(f, tuple)
         assert len(f) == 2  # spherical edges are between 2 points
