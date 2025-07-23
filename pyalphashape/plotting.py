@@ -36,12 +36,11 @@ plot_spherical_alpha_shape(sph_shape, line_color="red", fill=True)
 ```
 """
 
-
 import matplotlib.pyplot as plt
 from pyalphashape.AlphaShape import AlphaShape
 from pyalphashape.SphericalAlphaShape import SphericalAlphaShape
 from pyalphashape.SphericalDelaunay import SphericalDelaunay
-from typing import Any, Optional, Tuple, List, Dict
+from typing import Any, Optional, Tuple, List, Dict, cast
 from matplotlib.axes import Axes
 from mpl_toolkits.mplot3d import Axes3D  # noqa
 import numpy as np
@@ -59,8 +58,8 @@ def plot_polygon_edges(
     Parameters
     ----------
     edges : np.ndarray
-        An array of shape (n, 2) where each entry is a pair of points (each a coordinate array)
-        representing an edge of the polygon.
+        An array of shape (n, 2) where each entry is a pair of points
+        (each a coordinate array) representing an edge of the polygon.
     ax : matplotlib.axes.Axes
         A Matplotlib Axes object (2D or 3D) to plot on.
     line_color : str, optional
@@ -110,7 +109,8 @@ def interpolate_great_arc(
     Returns
     -------
     np.ndarray
-        Array of shape (num_points, 3) containing interpolated points on the unit sphere.
+        Array of shape (num_points, 3) containing interpolated points on the unit
+        sphere.
 
     """
 
@@ -180,7 +180,7 @@ def plot_spherical_triangulation(
         ax.grid(False)
 
         # Sphere surface
-        u, v = np.mgrid[0 : 2 * np.pi : 60j, 0 : np.pi : 30j]
+        u, v = np.mgrid[0 : 2 * np.pi : 60j, 0 : np.pi : 30j]  # type: ignore[misc]
         xs = np.cos(u) * np.sin(v)
         ys = np.sin(u) * np.sin(v)
         zs = np.cos(v)
@@ -263,7 +263,7 @@ def _plot_spherical_triangulation_plotly(
     if fig is None:
         fig = go.Figure()
 
-        u, v = np.mgrid[0 : 2 * np.pi : 60j, 0 : np.pi : 30j]
+        u, v = np.mgrid[0 : 2 * np.pi : 60j, 0 : np.pi : 30j]  # type: ignore[misc]
         xs = np.cos(u) * np.sin(v)
         ys = np.sin(u) * np.sin(v)
         zs = np.cos(v)
@@ -279,7 +279,7 @@ def _plot_spherical_triangulation_plotly(
             )
         )
 
-    pts = triangulation.perimeter_points
+    pts = triangulation.points_xyz
     fig.add_trace(
         go.Scatter3d(
             x=pts[:, 0],
@@ -349,10 +349,6 @@ def plot_alpha_shape(
     plot_polygon_edges(edges, ax, line_width=line_width, line_color=line_color)
 
 
-import numpy as np
-from typing import Tuple, Dict, List
-
-
 def generate_geodesic_fill_mesh(
     shape: "SphericalAlphaShape", resolution: int = 10
 ) -> Tuple[np.ndarray, np.ndarray]:
@@ -390,7 +386,7 @@ def generate_geodesic_fill_mesh(
 
     def add_vertex(v: np.ndarray) -> int:
         v /= np.linalg.norm(v)
-        key = tuple(np.round(v, 8))
+        key = cast(tuple[float, float, float], tuple(np.round(v, 8)))
         if key not in vertex_cache:
             vertex_cache[key] = len(vertices)
             vertices.append(v)
@@ -485,7 +481,7 @@ def plot_spherical_alpha_shape(
         ax.grid(False)
 
         # Sphere surface
-        u, v = np.mgrid[0 : 2 * np.pi : 60j, 0 : np.pi : 30j]
+        u, v = np.mgrid[0 : 2 * np.pi : 60j, 0 : np.pi : 30j]  # type: ignore[misc]
         xs = np.cos(u) * np.sin(v)
         ys = np.sin(u) * np.sin(v)
         zs = np.cos(v)
@@ -517,6 +513,9 @@ def plot_spherical_alpha_shape(
             )
 
         # Points
+        assert (
+            shape.perimeter_points is not None
+        ), "Cannot plot without any perimeter points"
         pts = shape.perimeter_points
         ax.scatter(
             pts[:, 0], pts[:, 1], pts[:, 2], color=marker_color, s=marker_size**2
@@ -557,7 +556,8 @@ def _plot_spherical_alpha_shape_plotly(
     Parameters
     ----------
     shape : SphericalAlphaShape
-        The spherical alpha shape object containing perimeter edges, simplices, and point cloud.
+        The spherical alpha shape object containing perimeter edges, simplices, and
+        point cloud.
     line_width : float
         Width of the perimeter arcs.
     line_color : Any
@@ -573,7 +573,8 @@ def _plot_spherical_alpha_shape_plotly(
     fig : plotly.graph_objects.Figure or None
         Existing Plotly figure to modify. If None, a new one is created.
     fill : bool
-        Whether to shade the interior area of the alpha shape using the spherical triangles.
+        Whether to shade the interior area of the alpha shape using the spherical
+        triangles.
     fill_color : Any
         Fill color for the triangle mesh.
     fill_alpha : float
@@ -588,7 +589,7 @@ def _plot_spherical_alpha_shape_plotly(
 
     if fig is None:
         fig = go.Figure()
-        u, v = np.mgrid[0 : 2 * np.pi : 60j, 0 : np.pi : 30j]
+        u, v = np.mgrid[0 : 2 * np.pi : 60j, 0 : np.pi : 30j]  # type: ignore[misc]
         xs = np.cos(u) * np.sin(v)
         ys = np.sin(u) * np.sin(v)
         zs = np.cos(v)
@@ -633,7 +634,9 @@ def _plot_spherical_alpha_shape_plotly(
                 showlegend=False,
             )
         )
-
+    assert (
+        shape.perimeter_points is not None
+    ), "Cannot plot without any perimeter points"
     pts = shape.perimeter_points
     fig.add_trace(
         go.Scatter3d(
