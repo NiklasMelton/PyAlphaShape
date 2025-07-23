@@ -237,7 +237,7 @@ class AlphaShape:
 
         """
 
-        if not self.perimeter_points or len(self.perimeter_points) == 0:
+        if self.perimeter_points is None or len(self.perimeter_points) == 0:
             return False
 
         # 1. Close to any perimeter vertex?
@@ -483,7 +483,7 @@ class AlphaShape:
             True if empty; False otherwise.
 
         """
-        if not self.perimeter_points:
+        if self.perimeter_points is None:
             return True
         return len(self.perimeter_points) == 0
 
