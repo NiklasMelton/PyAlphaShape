@@ -45,12 +45,25 @@ def test_contains_point_outside():
 
 
 def test_distance_to_surface_inside_and_outside():
-    points = np.array([[0, 0], [1, 0], [0.5, 1]])
+    # A simple triangle in 2D
+    points = np.array([
+        [0.0, 0.0],
+        [1.0, 0.0],
+        [0.5, 1.0],
+    ])
     shape = AlphaShape(points, alpha=0.0)
+
+    # 1) interior → zero distance
     inside_point = np.array([0.5, 0.5])
+    assert np.isclose(shape.distance_to_surface(inside_point), 0.0, atol=1e-9)
+
+    # 2) exterior → exact distance = sqrt((2-0.5)^2 + (2-1)^2) = sqrt(3.25)
     outside_point = np.array([2.0, 2.0])
-    assert np.isclose(shape.distance_to_surface(inside_point), 0.0)
-    assert shape.distance_to_surface(outside_point) > 0.0
+    expected = np.sqrt(3.25)
+    got = shape.distance_to_surface(outside_point)
+    assert np.isclose(got, expected, atol=1e-9), (
+        f"Expected {expected:.9f}, but got {got:.9f}"
+    )
 
 
 def test_add_points_grows_shape():
