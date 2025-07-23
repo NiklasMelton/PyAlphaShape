@@ -59,7 +59,7 @@ def test_distance_to_surface_various_cases():
     # 2) Far above ⇒ closest to vertex (0.5,1.0):
     #    distance = sqrt((2-0.5)^2 + (2-1)^2) = sqrt(3.25)
     above = np.array([2.0, 2.0])
-    expected_above = math.sqrt(3.25)
+    expected_above = np.sqrt(3.25)
     got_above = shape.distance_to_surface(above)
     assert np.isclose(got_above, expected_above, atol=1e-9), (
         f"Above: expected {expected_above:.9f}, got {got_above:.9f}"
@@ -77,7 +77,7 @@ def test_distance_to_surface_various_cases():
     # 4) Down‑left corner ⇒ closest to vertex (0,0):
     #    point = (-1, -1) ⇒ distance = sqrt(2)
     down_left = np.array([-1.0, -1.0])
-    expected_dl = math.sqrt(2)
+    expected_dl = np.sqrt(2)
     got_dl = shape.distance_to_surface(down_left)
     assert np.isclose(got_dl, expected_dl, atol=1e-9), (
         f"Down-left: expected {expected_dl:.9f}, got {got_dl:.9f}"
