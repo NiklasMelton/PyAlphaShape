@@ -33,13 +33,12 @@ import math
 from collections import defaultdict
 from scipy.spatial import Delaunay
 import numpy as np
-from typing import Tuple, Set, List, Literal, Optional
+from typing import Tuple, Set, List, Literal, Optional, Generator, Union, Dict, Any
 from pyalphashape.GraphClosure import GraphClosureTracker
 
 
 def circumcenter(points: np.ndarray) -> np.ndarray:
-    """
-    Compute the circumcenter of a simplex in arbitrary dimensions.
+    """Compute the circumcenter of a simplex in arbitrary dimensions.
 
     Parameters
     ----------
@@ -51,23 +50,22 @@ def circumcenter(points: np.ndarray) -> np.ndarray:
     -------
     np.ndarray
         The barycentric coordinates of the circumcenter of the simplex.
+
     """
 
     n, _ = points.shape
 
     # build the (d+1) × (d+1) system with plain ndarrays
-    A = np.block([
-        [2 * points @ points.T, np.ones((n, 1))],
-        [np.ones((1, n)), np.zeros((1, 1))]
-    ])
+    A = np.block(
+        [[2 * points @ points.T, np.ones((n, 1))], [np.ones((1, n)), np.zeros((1, 1))]]
+    )
     b = np.concatenate([np.sum(points * points, axis=1), np.array([1.0])])
 
     return np.linalg.solve(A, b)[:-1]
 
 
 def circumradius(points: np.ndarray) -> float:
-    """
-    Compute the circumradius of a simplex in arbitrary dimensions.
+    """Compute the circumradius of a simplex in arbitrary dimensions.
 
     Parameters
     ----------
@@ -78,15 +76,17 @@ def circumradius(points: np.ndarray) -> float:
     -------
     float
         The circumradius of the simplex.
+
     """
 
     return np.linalg.norm(points[0, :] - np.dot(circumcenter(points), points))
 
 
-
-def alphasimplices(points: np.ndarray) -> Tuple[np.ndarray, float, np.ndarray]:
-    """
-    Generate all simplices in the Delaunay triangulation along with their circumradii.
+def alphasimplices(
+    points: np.ndarray,
+) -> Generator[Tuple[np.ndarray, float, np.ndarray], None, None]:
+    """Generate all simplices in the Delaunay triangulation along with their
+    circumradii.
 
     Parameters
     ----------
@@ -100,6 +100,7 @@ def alphasimplices(points: np.ndarray) -> Tuple[np.ndarray, float, np.ndarray]:
         - The simplex as an array of indices,
         - Its circumradius,
         - The coordinates of the simplex vertices.
+
     """
 
     coords = np.asarray(points)
@@ -110,21 +111,43 @@ def alphasimplices(points: np.ndarray) -> Tuple[np.ndarray, float, np.ndarray]:
         try:
             yield simplex, circumradius(simplex_points), simplex_points
         except np.linalg.LinAlgError:
-            logging.warn('Singular matrix. Likely caused by all points '
-                         'lying in an N-1 space.')
+            logging.warn(
+                "Singular matrix. Likely caused by all points " "lying in an N-1 space."
+            )
 
 
-def point_to_simplex_distance(p, simplex, tol=1e-9):
+def point_to_simplex_distance(
+    p: np.ndarray, simplex: np.ndarray, tol: float = 1e-9
+) -> float:
+    """Compute the shortest Euclidean distance from a point to a k‑simplex in
+    n‑dimensional space.
+
+    Parameters
+    ----------
+    p : np.ndarray of shape (n,)
+        A query point in the ambient n‑dimensional space.
+    simplex : np.ndarray of shape (k+1, n)
+        An array of k+1 vertices defining a k‑dimensional simplex embedded in n‑space.
+    tol : float, optional
+        Tolerance for the barycentric coordinate “inside” test. Defaults to 1e-9.
+
+    Returns
+    -------
+    float
+        The Euclidean distance from `p` to the simplex. Returns 0.0 if `p` projects
+        inside or on the simplex (within the given tolerance).
+
+    """
     k = len(simplex) - 1
     if k == 0:
         # 0-simplex: just a point
         return np.linalg.norm(p - simplex[0])
 
     base = simplex[0]
-    A = (simplex[1:] - base).T         # shape (d, k)
+    A = (simplex[1:] - base).T  # shape (d, k)
     λ, *_ = np.linalg.lstsq(A, p - base, rcond=None)
     proj = base + A @ λ
-    bary = np.empty(k+1)
+    bary = np.empty(k + 1)
     bary[0] = 1 - λ.sum()
     bary[1:] = λ
 
@@ -135,34 +158,35 @@ def point_to_simplex_distance(p, simplex, tol=1e-9):
     # otherwise, recurse on all k faces (remove one vertex at a time)
     return min(
         point_to_simplex_distance(p, np.delete(simplex, i, axis=0), tol)
-        for i in range(k+1)
+        for i in range(k + 1)
     )
 
 
-
 class AlphaShape:
-    """
-    Compute the α-shape (concave hull) of a point cloud in arbitrary dimensions.
+    """Compute the α-shape (concave hull) of a point cloud in arbitrary dimensions."""
 
-    Parameters
-    ----------
-    points : np.ndarray
-        An (N, d) array of points.
-    alpha : float, optional
-        The α parameter controlling the "tightness" of the shape. Default is 0.
-    connectivity : {"strict", "relaxed"}, optional
-        Connectivity rule for filtering simplices. Default is "strict".
-    ensure_closure : bool, default True
-        If True, triangles that are otherwise too large but are fully enclosed by
-        accepted triangles will be included. This prevents holes
-    """
-
-    def __init__(self,
-                 points: np.ndarray,
-                 alpha: float = 0.,
-                 connectivity: Literal["strict", "relaxed"] = "strict",
-                 ensure_closure: bool = True
+    def __init__(
+        self,
+        points: np.ndarray,
+        alpha: float = 0.0,
+        connectivity: Literal["strict", "relaxed"] = "strict",
+        ensure_closure: bool = True,
     ):
+        """Compute the α-shape (concave hull) of a point cloud in arbitrary dimensions.
+
+        Parameters
+        ----------
+        points : np.ndarray
+            An (N, d) array of points.
+        alpha : float, optional
+            The α parameter controlling the "tightness" of the shape. Default is 0.
+        connectivity : {"strict", "relaxed"}, optional
+            Connectivity rule for filtering simplices. Default is "strict".
+        ensure_closure : bool, default True
+            If True, triangles that are otherwise too large but are fully enclosed by
+            accepted triangles will be included. This prevents holes
+
+        """
         self._dim = points.shape[1]
         if self._dim < 2:
             raise ValueError("dimension must be ≥ 2")
@@ -177,7 +201,7 @@ class AlphaShape:
 
         self.simplices: Set[Tuple[int, ...]] = set()
         self.perimeter_edges: List[Tuple[np.ndarray, np.ndarray]] = []
-        self.perimeter_points: np.ndarray | None = None
+        self.perimeter_points: Union[np.ndarray, None] = None
         self.GCT = GraphClosureTracker(len(points))
 
         # build once
@@ -185,20 +209,19 @@ class AlphaShape:
 
     @property
     def vertices(self) -> Optional[np.ndarray]:
-        """
-        Get the perimeter vertices of the alpha shape.
+        """Get the perimeter vertices of the alpha shape.
 
         Returns
         -------
         np.ndarray or None
             Array of perimeter points, or None if not computed.
+
         """
 
         return self.perimeter_points
 
     def contains_point(self, pt: np.ndarray, tol: float = 1e-8) -> bool:
-        """
-        Check whether a given point lies inside or on the alpha shape.
+        """Check whether a given point lies inside or on the alpha shape.
 
         Parameters
         ----------
@@ -211,9 +234,10 @@ class AlphaShape:
         -------
         bool
             True if the point lies inside or on the alpha shape; False otherwise.
+
         """
 
-        if len(self.perimeter_points) == 0:
+        if not self.perimeter_points or len(self.perimeter_points) == 0:
             return False
 
         # 1. Close to any perimeter vertex?
@@ -240,7 +264,8 @@ class AlphaShape:
                 A = np.vstack([verts.T, np.ones(len(verts))])  # (d+1, d+1)
                 b = np.append(pt, 1.0)
 
-                # Full‑rank simplex → solve directly; otherwise fall back to least‑squares
+                # Full‑rank simplex → solve directly;
+                # otherwise fall back to least‑squares
                 if A.shape[0] == A.shape[1]:
                     bary = np.linalg.solve(A, b)
                 else:
@@ -254,8 +279,7 @@ class AlphaShape:
         return False
 
     def add_points(self, new_pts: np.ndarray, perimeter_only: bool = False) -> None:
-        """
-        Add new points to the alpha shape (batch rebuild).
+        """Add new points to the alpha shape (batch rebuild).
 
         Parameters
         ----------
@@ -263,23 +287,28 @@ class AlphaShape:
             A (N, d) array of new points to add. The alpha shape is rebuilt.
         perimeter_only: bool
             If True, only pass perimeter points to new shape. Otherwise, pass all points
+
         """
 
         if perimeter_only:
             pts = np.vstack([self.points, new_pts])
         else:
             pts = np.vstack([self.perimeter_points, new_pts])
-        self.__init__(pts, alpha=self.alpha, connectivity=self.connectivity,
-                      ensure_closure=self.ensure_closure)
+        self.__init__(  # type: ignore[misc]
+            pts,
+            alpha=self.alpha,
+            connectivity=self.connectivity,
+            ensure_closure=self.ensure_closure,
+        )
 
     def _get_boundary_faces(self) -> Set[Tuple[int, ...]]:
-        """
-        Identify and return the boundary (d-1)-faces of the alpha shape.
+        """Identify and return the boundary (d-1)-faces of the alpha shape.
 
         Returns
         -------
         Set[Tuple[int, ...]]
             A set of index tuples representing the boundary faces.
+
         """
 
         if hasattr(self, "_boundary_faces"):
@@ -295,12 +324,12 @@ class AlphaShape:
                 else:
                     faces.add(f)
         # cache
-        self._boundary_faces = faces
+        self._boundary_faces: Set[Tuple[int, ...]] = faces
         return faces
 
     def distance_to_surface(self, point: np.ndarray, tol: float = 1e-9) -> float:
-        """
-        Compute the shortest Euclidean distance from a point to the alpha shape surface.
+        """Compute the shortest Euclidean distance from a point to the alpha shape
+        surface.
 
         Parameters
         ----------
@@ -314,6 +343,7 @@ class AlphaShape:
         float
             Distance from the point to the alpha shape surface. Returns 0 if inside
             or on surface.
+
         """
 
         p = np.asarray(point, dtype=float)
@@ -332,7 +362,7 @@ class AlphaShape:
             return np.min(np.linalg.norm(self.perimeter_points - p, axis=1))
 
         dists = []
-        for face in boundary_faces:
+        for face in faces:
             verts = self.points[list(face)]
             dists.append(point_to_simplex_distance(p, verts, tol))
         return min(dists)
@@ -340,10 +370,11 @@ class AlphaShape:
         return float(min(dists))
 
     def _build_batch(self) -> None:
-        """
-        Construct the alpha shape using Delaunay triangulation and filtering by alpha.
+        """Construct the alpha shape using Delaunay triangulation and filtering by
+        alpha.
 
         This method is automatically called upon initialization.
+
         """
 
         dim, pts = self._dim, self.points
@@ -367,8 +398,9 @@ class AlphaShape:
 
         for simp, r in simplices:
             root_set = {uf.find(v) for v in simp}
-            keep = (r <= r_filter) or \
-                   (self.connectivity == "relaxed" and len(root_set) > 1)
+            keep = (r <= r_filter) or (
+                self.connectivity == "relaxed" and len(root_set) > 1
+            )
             if not keep:
                 continue
             uf.add_fully_connected_subgraph(list(simp))
@@ -386,15 +418,15 @@ class AlphaShape:
 
             # Identify the largest connected component
             comp_sizes = {root: len(nodes) for root, nodes in gct.components.items()}
-            main_root = max(comp_sizes, key=comp_sizes.get)
+            main_root = max(comp_sizes, key=lambda k: comp_sizes[k])
             main_verts = gct.components[main_root]
 
             # Build edge-to-triangle map
             edge_to_triangles = defaultdict(list)
             for simp in all_passed:
                 for edge in itertools.combinations(simp, 2):
-                    edge = tuple(sorted(edge))
-                    edge_to_triangles[edge].append(simp)
+                    edge_ = tuple(sorted(edge))
+                    edge_to_triangles[edge_].append(simp)
 
             # Keep only triangles in the main component that share an edge with another
             kept = []
@@ -426,13 +458,13 @@ class AlphaShape:
         # ---------- 3.  rebuild perimeter from *kept* simplices ----------
         self.simplices = set(kept)
         self.GCT = GraphClosureTracker(n)  # final tracker
-        edge_counts = defaultdict(int)
+        edge_counts: Dict[Tuple[Any, ...], int] = defaultdict(int)
 
         for s in self.simplices:
             self.GCT.add_fully_connected_subgraph(list(s))
             for edge in itertools.combinations(s, 2):  # triangle edges
-                edge = tuple(sorted(edge))
-                edge_counts[edge] += 1
+                edge_ = tuple(sorted(edge))
+                edge_counts[edge_] += 1
 
         # ---------- 4.  store perimeter ----------------------------------
         perimeter_edges_idx = [e for e, count in edge_counts.items() if count == 1]
@@ -443,41 +475,41 @@ class AlphaShape:
 
     @property
     def is_empty(self) -> bool:
-        """
-        Check whether the alpha shape is empty (i.e., no perimeter points).
+        """Check whether the alpha shape is empty (i.e., no perimeter points).
 
         Returns
         -------
         bool
             True if empty; False otherwise.
-        """
 
+        """
+        if not self.perimeter_points:
+            return True
         return len(self.perimeter_points) == 0
 
     @property
     def triangle_faces(self) -> List[np.ndarray]:
-        """
-        Get the triangle faces (simplices) that make up the alpha shape.
+        """Get the triangle faces (simplices) that make up the alpha shape.
 
         Returns
         -------
         List[np.ndarray]
             List of arrays containing vertex coordinates of each simplex.
+
         """
 
         return [self.points[list(s)] for s in self.simplices]
 
-
     @property
     def centroid(self) -> np.ndarray:
-        """
-        Compute the hyper-volumetric centroid of the Euclidean alpha shape
-        using direct determinant-based simplex volume.
+        """Compute the hyper-volumetric centroid of the Euclidean alpha shape using
+        direct determinant-based simplex volume.
 
         Returns
         -------
         np.ndarray
             A (d,) array representing the centroid in Euclidean space.
+
         """
         if len(self.simplices) == 0:
             return np.full(self._dim, np.nan)
@@ -506,4 +538,3 @@ class AlphaShape:
             return np.mean(self.points, axis=0)
 
         return weighted_sum / total_volume
-

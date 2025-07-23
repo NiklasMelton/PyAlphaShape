@@ -35,23 +35,25 @@ lightweight graph‑partition object for algorithms that need to monitor the
 number or composition of connected components in real time.
 """
 
-from typing import List
+from typing import List, Union, Tuple, Set
+
+
 class GraphClosureTracker:
-    """
-    A dynamic Union-Find (Disjoint Set) data structure with explicit tracking
-    of connected components and support for dynamic resizing.
+    """A dynamic Union-Find (Disjoint Set) data structure with explicit tracking of
+    connected components and support for dynamic resizing.
 
     Useful for managing dynamic connectivity in undirected graphs.
+
     """
 
     def __init__(self, num_nodes: int):
-        """
-        Initialize the tracker with a specified number of nodes.
+        """Initialize the tracker with a specified number of nodes.
 
         Parameters
         ----------
         num_nodes : int
             The initial number of nodes in the graph.
+
         """
 
         self.parent = list(range(num_nodes))
@@ -59,15 +61,14 @@ class GraphClosureTracker:
         self.num_nodes = num_nodes
         self.components = {i: {i} for i in range(num_nodes)}  # Initial components
 
-
     def _ensure_capacity(self, node: int) -> None:
-        """
-        Dynamically expand internal arrays to include a node with the given index.
+        """Dynamically expand internal arrays to include a node with the given index.
 
         Parameters
         ----------
         node : int
             The node index to ensure capacity for.
+
         """
 
         if node >= self.num_nodes:
@@ -80,8 +81,7 @@ class GraphClosureTracker:
 
     # modify the public methods to call it
     def find(self, node: int) -> int:
-        """
-        Find the root representative of the set containing the node.
+        """Find the root representative of the set containing the node.
 
         Parameters
         ----------
@@ -92,6 +92,7 @@ class GraphClosureTracker:
         -------
         int
             The root node of the component.
+
         """
 
         self._ensure_capacity(node)
@@ -100,8 +101,7 @@ class GraphClosureTracker:
         return self.parent[node]
 
     def union(self, node1: int, node2: int) -> None:
-        """
-        Merge the components containing node1 and node2.
+        """Merge the components containing node1 and node2.
 
         Parameters
         ----------
@@ -109,6 +109,7 @@ class GraphClosureTracker:
             First node.
         node2 : int
             Second node.
+
         """
 
         root1 = self.find(node1)
@@ -132,8 +133,7 @@ class GraphClosureTracker:
                 del self.components[root2]
 
     def add_edge(self, node1: int, node2: int) -> None:
-        """
-        Add an undirected edge between two nodes by merging their components.
+        """Add an undirected edge between two nodes by merging their components.
 
         Parameters
         ----------
@@ -141,18 +141,21 @@ class GraphClosureTracker:
             First node.
         node2 : int
             Second node.
+
         """
 
         self.union(node1, node2)
 
-    def add_fully_connected_subgraph(self, nodes: List[int]) -> None:
-        """
-        Fully connect a list of nodes by merging all pairs into one component.
+    def add_fully_connected_subgraph(
+        self, nodes: Union[List[int], Tuple[int, ...]]
+    ) -> None:
+        """Fully connect a list of nodes by merging all pairs into one component.
 
         Parameters
         ----------
         nodes : List[int]
             A list of node indices to be fully connected.
+
         """
 
         for i in range(len(nodes)):
@@ -160,8 +163,7 @@ class GraphClosureTracker:
                 self.union(nodes[i], nodes[j])
 
     def subgraph_is_already_connected(self, nodes: List[int]) -> bool:
-        """
-        Check whether all nodes in the list belong to the same connected component.
+        """Check whether all nodes in the list belong to the same connected component.
 
         Parameters
         ----------
@@ -172,6 +174,7 @@ class GraphClosureTracker:
         -------
         bool
             True if all nodes are connected, False otherwise.
+
         """
 
         if not nodes:
@@ -182,8 +185,7 @@ class GraphClosureTracker:
         return all(self.find(node) == root for node in nodes)
 
     def is_connected(self, node1: int, node2: int) -> bool:
-        """
-        Check whether two nodes are in the same connected component.
+        """Check whether two nodes are in the same connected component.
 
         Parameters
         ----------
@@ -196,25 +198,25 @@ class GraphClosureTracker:
         -------
         bool
             True if node1 and node2 are connected, False otherwise.
+
         """
 
         return self.find(node1) == self.find(node2)
 
     def __iter__(self):
-        """
-        Iterate over the current connected components.
+        """Iterate over the current connected components.
 
         Returns
         -------
         Iterator[Set[int]]
             An iterator over sets of node indices.
+
         """
 
         return iter(self.components.values())
 
-    def __getitem__(self, index: int) -> List[int]:
-        """
-        Index into the list of connected components.
+    def __getitem__(self, index: int) -> Set[int]:
+        """Index into the list of connected components.
 
         Parameters
         ----------
@@ -225,18 +227,19 @@ class GraphClosureTracker:
         -------
         List[int]
             List of nodes in the selected connected component.
+
         """
 
         return list(self.components.values())[index]
 
     def __len__(self) -> int:
-        """
-        Return the number of connected components.
+        """Return the number of connected components.
 
         Returns
         -------
         int
             The number of components currently being tracked.
+
         """
 
         return len(self.components)
