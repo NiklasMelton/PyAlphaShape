@@ -32,6 +32,10 @@ def test_alpha_shape_basic_perimeter():
     assert len(alpha_shape.perimeter_points) > 0
     assert isinstance(alpha_shape.perimeter_edges, list)
 
+def test_contains_point_incomplete():
+    points = np.array([[0, 0], [1, 0]])
+    shape = AlphaShape(points, alpha=0.0)
+    assert not shape.contains_point(np.array([0.5, 0.5]))
 
 def test_contains_point_inside():
     points = np.array([[0, 0], [1, 0], [0.5, 1]])
