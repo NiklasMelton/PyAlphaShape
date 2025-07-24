@@ -266,9 +266,9 @@ class AlphaShape:
         """
 
         if perimeter_only:
-            pts = np.vstack([self.points, new_pts])
-        else:
             pts = np.vstack([self.perimeter_points, new_pts])
+        else:
+            pts = np.vstack([self.points, new_pts])
         self.__init__(  # type: ignore[misc]
             pts,
             alpha=self.alpha,
