@@ -204,6 +204,8 @@ class AlphaShape:
         self.perimeter_points: Union[np.ndarray, None] = None
         self.GCT = GraphClosureTracker(len(points))
 
+        self._delaunay: Union[Delaunay, None] = None
+
         # build once
         self._build_batch()
 
@@ -236,47 +238,20 @@ class AlphaShape:
             True if the point lies inside or on the alpha shape; False otherwise.
 
         """
+        assert (
+            self._delaunay is not None
+        ), "Delaunay triangulation must be performed first"
+        # fast hull‐check
+        simplex_idx = self._delaunay.find_simplex(pt)
+        if simplex_idx < 0:
+            return False  # outside convex hull -> outside α‐shape
 
-        if self.perimeter_points is None or len(self.perimeter_points) == 0:
-            return False
-
-        # 1. Close to any perimeter vertex?
-        if np.any(np.linalg.norm(self.perimeter_points - pt, axis=1) < tol):
-            return True
-
-        if len(self.simplices) == 0:
-            return False
-
-        # 2. On any perimeter edge?
-        for a, b in self.perimeter_edges:
-            ab = b - a
-            ap = pt - a
-            proj_len = np.dot(ap, ab) / np.dot(ab, ab)
-            if -tol <= proj_len <= 1.0 + tol:
-                closest = a + proj_len * ab
-                if np.linalg.norm(closest - pt) < tol:
-                    return True
-
-        # 3. Inside a simplex?  (barycentric‑coordinate test)
-        for s in self.simplices:
-            verts = self.points[list(s)]
-            try:
-                A = np.vstack([verts.T, np.ones(len(verts))])  # (d+1, d+1)
-                b = np.append(pt, 1.0)
-
-                # Full‑rank simplex → solve directly;
-                # otherwise fall back to least‑squares
-                if A.shape[0] == A.shape[1]:
-                    bary = np.linalg.solve(A, b)
-                else:
-                    bary, *_ = np.linalg.lstsq(A, b, rcond=None)
-
-                if np.all(bary >= -tol):
-                    return True
-            except np.linalg.LinAlgError:
-                continue
-
-        return False
+        # map back to vertex‐indices & test membership
+        tri = tuple(sorted(self._delaunay.simplices[simplex_idx]))
+        if tri in self.simplices:
+            return True  # inside one of the retained simplices
+        else:
+            return False  # lies in a Delaunay simplex that was carved away
 
     def add_points(self, new_pts: np.ndarray, perimeter_only: bool = False) -> None:
         """Add new points to the alpha shape (batch rebuild).
@@ -386,13 +361,13 @@ class AlphaShape:
             return
 
         r_filter = np.inf if self.alpha <= 0 else 1.0 / self.alpha
-        tri = Delaunay(pts, qhull_options="Qz")
+        self._delaunay = Delaunay(pts, qhull_options="Qz")
 
         # ---------- 1.  main sweep ---------------------------------------
         simplices = []
-        for s in tri.simplices:
+        for s in self._delaunay.simplices:
             r = circumradius(pts[s])
-            simplices.append((tuple(s), r))
+            simplices.append((tuple(sorted(s)), r))
 
         simplices.sort(key=lambda t: t[1])  # radius ascending
         kept = []
