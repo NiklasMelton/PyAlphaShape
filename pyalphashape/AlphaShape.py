@@ -238,9 +238,9 @@ class AlphaShape:
             True if the point lies inside or on the alpha shape; False otherwise.
 
         """
-        assert (
-            self._delaunay is not None
-        ), "Delaunay triangulation must be performed first"
+        if self._delaunay is None or self.perimeter_points is None:
+            return False
+
         # fast hull‐check
         simplex_idx = self._delaunay.find_simplex(pt)
         if simplex_idx < 0:
