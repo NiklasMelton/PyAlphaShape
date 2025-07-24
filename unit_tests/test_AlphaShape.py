@@ -90,12 +90,27 @@ def test_distance_to_surface_various_cases():
 
 
 def test_add_points_grows_shape():
-    points = np.array([[0, 0], [1, 0], [0.5, 1]])
-    shape = AlphaShape(points, alpha=3.0)
+    points = np.array([[0, 0], [1, 0], [0, 1]])
+    shape = AlphaShape(points, alpha=0.0)
     n_perim_before = len(shape.perimeter_points)
-    shape.add_points(np.array([[0.5, 1.5]]), perimeter_only=False)
+    shape.add_points(np.array([[1, 1]]), perimeter_only=False)
     n_perim_after = len(shape.perimeter_points)
     assert n_perim_after > n_perim_before
+
+
+def test_add_points_perimeter_only():
+    points = np.array([[0, 0], [1, 0], [0.1, 1]])
+    shape = AlphaShape(points, alpha=0.0)
+    shape.add_points(np.array([[0, 2]]), perimeter_only=True)
+    n_perim_after = len(shape.perimeter_points)
+    assert n_perim_after == 3
+
+def test_add_points_all_points():
+    points = np.array([[0, 0], [1, 0], [0.1, 1]])
+    shape = AlphaShape(points, alpha=10.0, connectivity="relaxed")
+    shape.add_points(np.array([[0, 2]]), perimeter_only=False)
+    n_perim_after = len(shape.perimeter_points)
+    assert n_perim_after == 4
 
 
 def test_get_boundary_facets_returns_facets():
